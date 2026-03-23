@@ -2,8 +2,12 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { getMovieDetails, getMoviePitch, getReviews } from "@/lib/api";
 import type { Movie, Pitch, Review } from "@/lib/api";
+import { getCurrentUser } from "@/lib/auth";
+import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import StarRating from "@/components/StarRating";
+import ReviewForm from "@/components/ReviewForm";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
@@ -12,10 +16,16 @@ export default function MovieDetail() {
   const [movie, setMovie] = useState<Movie | null>(null);
   const [pitch, setPitch] = useState<Pitch | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [movieLoading, setMovieLoading] = useState(true);
   const [pitchLoading, setPitchLoading] = useState(true);
   const [movieError, setMovieError] = useState<string | null>(null);
   const [pitchError, setPitchError] = useState<string | null>(null);
+
+  // Check if user is already logged in
+  useEffect(() => {
+    getCurrentUser().then(setUser);
+  }, []);
 
   // Parse JSON strings from movie data
   function parseJsonField(field: string | string[] | undefined): string[] {
@@ -192,11 +202,23 @@ export default function MovieDetail() {
       </div>
 
       {/* Reviews section */}
-      <div className="mt-12 space-y-4">
+      <div className="mt-12 space-y-6">
         <h2 className="text-xl font-semibold">
           Reviews {reviews.length > 0 && `(${reviews.length})`}
         </h2>
 
+        {/* Review form */}
+        <ReviewForm
+          movieId={movieId}
+          user={user}
+          onUserChange={setUser}
+          onReviewSubmitted={async () => {
+            const updated = await getReviews(movieId);
+            setReviews(updated);
+          }}
+        />
+
+        {/* Existing reviews */}
         {reviews.length === 0 ? (
           <p className="text-muted-foreground text-sm">
             No reviews yet. Be the first to share your thoughts!
@@ -207,15 +229,9 @@ export default function MovieDetail() {
               <Card key={review.id} className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium">
-                    {review.profiles?.display_name || "anonymous"}
+                    🎭 {review.profiles?.display_name || "anonymous"}
                   </span>
-                  <span className="text-amber-500 font-medium">
-                    {"★".repeat(Math.floor(review.rating))}
-                    {review.rating % 1 !== 0 && "½"}{" "}
-                    <span className="text-xs text-muted-foreground">
-                      {review.rating}/5
-                    </span>
-                  </span>
+                  <StarRating value={review.rating} size="sm" />
                 </div>
                 {review.review_text && (
                   <p className="text-sm text-muted-foreground">{review.review_text}</p>

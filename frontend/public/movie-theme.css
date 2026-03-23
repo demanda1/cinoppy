@@ -1,0 +1,181 @@
+/* Movie-theme: cinematic neon look, tuned for shadcn/Tailwind variables.
+   Intentionally does NOT modify existing CSS/shadcn component logic. */
+
+:root {
+  /* shadcn theme variables (used by bg-background/text-foreground/etc) */
+  --background: oklch(0.985 0.02 315) !important;
+  --foreground: oklch(0.205 0.02 270) !important;
+  --card: oklch(0.99 0.01 315) !important;
+  --card-foreground: oklch(0.205 0.02 270) !important;
+  --popover: oklch(0.99 0.01 315) !important;
+  --popover-foreground: oklch(0.205 0.02 270) !important;
+
+  --primary: oklch(0.69 0.18 330) !important;
+  --primary-foreground: oklch(0.985 0.02 280) !important;
+  --secondary: oklch(0.86 0.08 255) !important;
+  --secondary-foreground: oklch(0.205 0.02 270) !important;
+  --muted: oklch(0.92 0.04 260) !important;
+  --muted-foreground: oklch(0.56 0.02 260) !important;
+
+  --accent: oklch(0.62 0.21 200) !important;
+  --accent-foreground: oklch(0.12 0.01 260) !important;
+
+  --destructive: oklch(0.62 0.23 27) !important;
+  --ring: oklch(0.75 0.23 330) !important;
+  --border: oklch(0.72 0 0 / 10%) !important;
+  --input: oklch(0.92 0.03 260 / 18%) !important;
+
+  /* App-level variables used in your existing src/index.css */
+  --bg: oklch(0.985 0.02 315) !important;
+  --text: oklch(0.205 0.02 270) !important;
+  --text-h: oklch(0.205 0.02 270) !important;
+  --code-bg: oklch(0.97 0.01 330) !important;
+
+  --accent-bg: rgba(170, 59, 255, 0.10) !important;
+  --accent-border: rgba(170, 59, 255, 0.55) !important;
+  --social-bg: rgba(244, 243, 236, 0.6) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: oklch(0.16 0.03 260) !important;
+    --foreground: oklch(0.985 0.02 280) !important;
+    --card: oklch(0.205 0.03 260) !important;
+    --card-foreground: oklch(0.985 0.02 280) !important;
+    --popover: oklch(0.205 0.03 260) !important;
+    --popover-foreground: oklch(0.985 0.02 280) !important;
+
+    --primary: oklch(0.83 0.16 330) !important;
+    --primary-foreground: oklch(0.17 0.02 270) !important;
+    --secondary: oklch(0.33 0.12 265) !important;
+    --secondary-foreground: oklch(0.99 0.02 280) !important;
+    --muted: oklch(0.33 0.06 265) !important;
+    --muted-foreground: oklch(0.72 0.03 265) !important;
+
+    --accent: oklch(0.70 0.20 200) !important;
+    --accent-foreground: oklch(0.12 0.01 260) !important;
+
+    --destructive: oklch(0.66 0.25 27) !important;
+    --ring: oklch(0.56 0.20 330) !important;
+    --border: oklch(1 0 0 / 12%) !important;
+    --input: oklch(1 0 0 / 14%) !important;
+
+    --bg: #0b0a12 !important;
+    --text: oklch(0.985 0.02 280) !important;
+    --text-h: oklch(0.985 0.02 280) !important;
+    --code-bg: #14141d !important;
+
+    --accent-bg: rgba(192, 132, 252, 0.12) !important;
+    --accent-border: rgba(192, 132, 252, 0.6) !important;
+    --social-bg: rgba(47, 48, 58, 0.45) !important;
+  }
+}
+
+/* If your app toggles the `.dark` class, keep it consistent. */
+.dark {
+  --background: oklch(0.16 0.03 260) !important;
+  --foreground: oklch(0.985 0.02 280) !important;
+  --card: oklch(0.205 0.03 260) !important;
+  --card-foreground: oklch(0.985 0.02 280) !important;
+  --popover: oklch(0.205 0.03 260) !important;
+  --popover-foreground: oklch(0.985 0.02 280) !important;
+  --primary: oklch(0.83 0.16 330) !important;
+  --primary-foreground: oklch(0.17 0.02 270) !important;
+  --secondary: oklch(0.33 0.12 265) !important;
+  --secondary-foreground: oklch(0.99 0.02 280) !important;
+  --muted: oklch(0.33 0.06 265) !important;
+  --muted-foreground: oklch(0.72 0.03 265) !important;
+  --accent: oklch(0.70 0.20 200) !important;
+  --accent-foreground: oklch(0.12 0.01 260) !important;
+  --destructive: oklch(0.66 0.25 27) !important;
+  --ring: oklch(0.56 0.20 330) !important;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  /* Base cinematic backdrop */
+  background:
+    radial-gradient(1200px circle at 15% 10%, color-mix(in oklch, var(--accent) 35%, transparent) 0%, transparent 55%),
+    radial-gradient(900px circle at 85% 20%, color-mix(in oklch, var(--primary) 28%, transparent) 0%, transparent 58%),
+    radial-gradient(800px circle at 55% 100%, color-mix(in oklch, var(--accent) 18%, transparent) 0%, transparent 62%),
+    linear-gradient(180deg, var(--background), var(--background)) !important;
+  overflow-x: hidden;
+}
+
+/* Film grain + subtle scanlines */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.18;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.035) 0px,
+      rgba(255, 255, 255, 0.035) 1px,
+      transparent 2px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.045) 0px,
+      rgba(0, 0, 0, 0.045) 1px,
+      transparent 2px,
+      transparent 5px
+    );
+  mix-blend-mode: overlay;
+}
+
+/* Keep app content above the grain overlay */
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+#root::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 22px;
+  pointer-events: none;
+  z-index: -1;
+  background:
+    linear-gradient(135deg, color-mix(in oklch, var(--accent) 45%, transparent), color-mix(in oklch, var(--primary) 30%, transparent));
+  opacity: 0.22;
+  filter: blur(20px);
+}
+
+nav {
+  box-shadow:
+    0 14px 55px rgba(0, 0, 0, 0.20),
+    0 2px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* Poster polish: more saturation + cinematic shadow */
+.group img {
+  filter: saturate(1.12) contrast(1.05);
+  transition: filter 220ms ease;
+}
+
+.group:hover img {
+  filter: saturate(1.2) contrast(1.08);
+}
+
+/* Make hover states feel more “screen glow” */
+.group:hover {
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.35),
+    0 0 0 1px color-mix(in oklch, var(--accent) 35%, transparent);
+}
+
+::selection {
+  background: color-mix(in oklch, var(--primary) 30%, transparent);
+  color: var(--primary-foreground);
+}
+

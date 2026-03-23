@@ -144,6 +144,8 @@ export function onAuthChange(
   callback: (user: UserProfile | null) => void
 ) {
   return supabase.auth.onAuthStateChange(async (event, session) => {
+    // `event` is provided by Supabase but not needed by this app.
+    void event;
     if (session?.user) {
       if (session.access_token) {
         localStorage.setItem("cinoppy_token", session.access_token);

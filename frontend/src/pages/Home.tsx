@@ -24,31 +24,46 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-12">
       {/* Hero section */}
-      <div className="mb-10 text-center space-y-3">
-        <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent">
+      <div className="mb-14 text-center space-y-4">
+        <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-gradient">
           Cinoppy
         </h1>
-        <p className="text-lg text-muted-foreground max-w-md mx-auto">
-          Discover movies with AI-powered spoiler-free pitches that actually make you want to hit play.
+        <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
+          Discover movies with AI-powered spoiler-free pitches
+          that actually make you want to hit play.
         </p>
+        <div className="flex justify-center gap-2 pt-2">
+          <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-purple/10 text-cinoppy-purple border border-cinoppy-purple/20">
+            AI Pitches
+          </span>
+          <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-pink/10 text-cinoppy-pink border border-cinoppy-pink/20">
+            No Spoilers
+          </span>
+          <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-blue/10 text-cinoppy-blue border border-cinoppy-blue/20">
+            Community Reviews
+          </span>
+        </div>
       </div>
 
       {/* Trending section */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Trending this week</h2>
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="h-6 w-1 rounded-full bg-cinoppy-pink" />
+          <h2 className="text-xl font-semibold">Trending this week</h2>
+        </div>
 
         {loading && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="aspect-[2/3] rounded-lg bg-muted animate-pulse" />
+              <div key={i} className="aspect-[2/3] rounded-xl bg-secondary animate-pulse" />
             ))}
           </div>
         )}
 
         {error && (
-          <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
+          <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive text-sm">
             {error}
           </div>
         )}

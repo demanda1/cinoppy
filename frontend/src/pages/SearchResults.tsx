@@ -32,24 +32,27 @@ export default function SearchResults() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <h2 className="text-xl font-semibold mb-6">
-        {query ? (
-          <>Results for "<span className="text-purple-500">{query}</span>"</>
-        ) : (
-          "Search for a movie"
-        )}
-      </h2>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="h-6 w-1 rounded-full bg-cinoppy-blue" />
+        <h2 className="text-xl font-semibold">
+          {query ? (
+            <>Results for "<span className="text-cinoppy-purple">{query}</span>"</>
+          ) : (
+            "Search for a movie"
+          )}
+        </h2>
+      </div>
 
       {loading && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="aspect-[2/3] rounded-lg bg-muted animate-pulse" />
+            <div key={i} className="aspect-[2/3] rounded-xl bg-secondary animate-pulse" />
           ))}
         </div>
       )}
 
       {error && (
-        <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm">
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive text-sm">
           {error}
         </div>
       )}

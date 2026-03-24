@@ -22,50 +22,39 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-
-        {/* Logo */}
-        <Link
-          to="/"
-          className="shrink-0 text-2xl font-bold tracking-tight bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 bg-clip-text text-transparent"
-        >
+        <Link to="/" className="shrink-0 text-2xl font-bold tracking-tight text-gradient">
           Cinoppy
         </Link>
 
-        {/* Search bar */}
         <form onSubmit={handleSearch} className="flex flex-1 max-w-md gap-2">
           <Input
             type="text"
             placeholder="Search movies..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-9"
+            className="h-9 bg-secondary/50 border-border/50 placeholder:text-muted-foreground/50 focus-visible:ring-cinoppy-purple/50"
           />
-          <Button type="submit" size="sm" variant="secondary">
+          <Button type="submit" size="sm" className="bg-cinoppy-purple hover:bg-cinoppy-purple/80 text-white">
             Search
           </Button>
         </form>
 
-        {/* Right side: nav links + user */}
         <div className="flex items-center gap-3">
           <Link to="/">
-            <Button variant="ghost" size="sm">Home</Button>
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              Home
+            </Button>
           </Link>
-
-          {user && (
-            <Link to="/watchlist">
-              <Button variant="ghost" size="sm">Watchlist</Button>
-            </Link>
-          )}
 
           {user ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm px-3 py-1 rounded-full bg-cinoppy-purple/10 text-cinoppy-purple border border-cinoppy-purple/20">
                 {user.is_anonymous ? "🎭" : "👤"} {user.display_name}
               </span>
               {!user.is_anonymous && (
-                <Button variant="outline" size="sm" onClick={onLogout}>
+                <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onLogout}>
                   Logout
                 </Button>
               )}

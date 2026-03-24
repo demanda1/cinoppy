@@ -5,7 +5,7 @@
 // goes through this file. The frontend never
 // calls TMDB, Gemini, or Supabase directly.
 
-const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://gateway-worker.demandappscorp.workers.dev";
+const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8787";
 
 // --- Types ---
 
@@ -19,6 +19,21 @@ export interface Movie {
   lead_actors?: string | string[];
   tmdb_rating: number;
   overview?: string;
+}
+
+export interface TVShow {
+  id: number;
+  title: string;
+  poster_url: string | null;
+  first_air_year: number | null;
+  genres: string | string[];
+  tmdb_rating: number;
+}
+
+export interface Provider {
+  id: number;
+  name: string;
+  logo_url: string | null;
 }
 
 export interface Pitch {
@@ -48,10 +63,7 @@ export interface WatchlistItem {
 
 // --- Helper ---
 
-async function apiFetch(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<any> {
+async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<any> {
   const token = localStorage.getItem("cinoppy_token");
 
   const headers: Record<string, string> = {
@@ -88,9 +100,53 @@ export async function getTrending(): Promise<Movie[]> {
   return data.results;
 }
 
+export async function getNowPlaying(): Promise<Movie[]> {
+  const data = await apiFetch("/api/movies/now-playing");
+  return data.results;
+}
+
+export async function getPopularMovies(): Promise<Movie[]> {
+  const data = await apiFetch("/api/movies/popular");
+  return data.results;
+}
+
+export async function getTopRatedMovies(): Promise<Movie[]> {
+  const data = await apiFetch("/api/movies/top-rated");
+  return data.results;
+}
+
+export async function getUpcoming(): Promise<Movie[]> {
+  const data = await apiFetch("/api/movies/upcoming");
+  return data.results;
+}
+
 export async function getMovieDetails(movieId: number): Promise<Movie> {
   const data = await apiFetch(`/api/movies/${movieId}`);
   return data.movie;
+}
+
+// --- TV Show APIs ---
+
+export async function getPopularTV(): Promise<TVShow[]> {
+  const data = await apiFetch("/api/tv/popular");
+  return data.results;
+}
+
+export async function getTopRatedTV(): Promise<TVShow[]> {
+  const data = await apiFetch("/api/tv/top-rated");
+  return data.results;
+}
+
+// --- Provider APIs ---
+
+export async function getMovieProviders(): Promise<Provider[]> {
+  const data = await apiFetch("/api/providers/movie");
+  return data.results;
+}
+
+export async function getTVProviders(): Promise<Provider[]> {
+  const data = await apiFetch("/api/providers/tv");
+  return data.results;
 }
 
 // --- Pitch API ---

@@ -1,26 +1,24 @@
 import { useState, useEffect } from "react";
-import { getTrending } from "@/lib/api";
-import type { Movie } from "@/lib/api";
-import MovieCard from "@/components/MovieCard";
+import {
+  getTrending,
+  getNowPlaying,
+  getPopularMovies,
+  getTopRatedMovies,
+  getUpcoming,
+  getPopularTV,
+  getTopRatedTV,
+  getMovieProviders,
+} from "@/lib/api";
+import type { Provider } from "@/lib/api";
+import MovieRow from "@/components/MovieRow";
 
 export default function Home() {
-  const [trending, setTrending] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [providers, setProviders] = useState<Provider[]>([]);
 
   useEffect(() => {
-    async function fetchTrending() {
-      try {
-        setLoading(true);
-        const movies = await getTrending();
-        setTrending(movies);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load trending movies");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchTrending();
+    getMovieProviders()
+      .then((data) => setProviders(data.slice(0, 12)))
+      .catch(() => {});
   }, []);
 
   return (
@@ -47,34 +45,79 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Trending section */}
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="h-6 w-1 rounded-full bg-cinoppy-pink" />
-          <h2 className="text-xl font-semibold">Trending this week</h2>
-        </div>
+      {/* Movie and TV sections */}
+      <div className="space-y-10">
+        <MovieRow
+          title="Trending this week"
+          accentColor="#ec4899"
+          fetchFn={getTrending}
+        />
 
-        {loading && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="aspect-[2/3] rounded-xl bg-secondary animate-pulse" />
-            ))}
+        <MovieRow
+          title="Now playing in theatres"
+          accentColor="#a855f7"
+          fetchFn={getNowPlaying}
+        />
+
+        <MovieRow
+          title="Popular movies"
+          accentColor="#3b82f6"
+          fetchFn={getPopularMovies}
+        />
+
+        <MovieRow
+          title="Upcoming movies"
+          accentColor="#f59e0b"
+          fetchFn={getUpcoming}
+        />
+
+        <MovieRow
+          title="Top rated movies"
+          accentColor="#10b981"
+          fetchFn={getTopRatedMovies}
+        />
+
+        <MovieRow
+          title="Popular TV shows"
+          accentColor="#06b6d4"
+          fetchFn={getPopularTV}
+          type="tv"
+        />
+
+        <MovieRow
+          title="Top rated TV shows"
+          accentColor="#ec4899"
+          fetchFn={getTopRatedTV}
+          type="tv"
+        />
+
+        {/* Streaming providers */}
+        {providers.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-6 w-1 rounded-full bg-cinoppy-purple" />
+              <h2 className="text-lg font-semibold">Where to stream (India)</h2>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              {providers.map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border/30 hover:border-cinoppy-purple/30 transition-colors"
+                >
+                  {p.logo_url && (
+                    <img src={p.logo_url} alt={p.name} className="w-6 h-6 rounded" />
+                  )}
+                  <span className="text-sm text-muted-foreground">{p.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
+      </div>
 
-        {error && (
-          <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive text-sm">
-            {error}
-          </div>
-        )}
-
-        {!loading && !error && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {trending.map((movie) => (
-              <MovieCard key={movie.id} movie={movie} />
-            ))}
-          </div>
-        )}
+      {/* Footer attribution */}
+      <div className="mt-14 pt-4 border-t border-border/30 text-xs text-muted-foreground/40 text-center">
+        This product uses the TMDB API but is not endorsed or certified by TMDB.
       </div>
     </div>
   );

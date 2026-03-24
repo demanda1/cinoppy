@@ -7,8 +7,8 @@
 
 export interface Env {
 	ENVIRONMENT: string;
-	DATA_WORKER: Fetcher;   // Service Binding to cinoppy-data worker
-	AI_WORKER: Fetcher;     // Service Binding to cinoppy-ai worker
+	DATA_WORKER: Fetcher;
+	AI_WORKER: Fetcher;
   }
   
   const corsHeaders: Record<string, string> = {
@@ -22,7 +22,6 @@ export interface Env {
 	  const url = new URL(request.url);
 	  const path = url.pathname;
   
-	  // Handle preflight OPTIONS requests
 	  if (request.method === "OPTIONS") {
 		return new Response(null, { status: 204, headers: corsHeaders });
 	  }
@@ -31,7 +30,6 @@ export interface Env {
 		let response: Response;
   
 		if (path === "/" || path === "/health") {
-		  // Health check
 		  response = Response.json({
 			status: "ok",
 			service: "cinoppy-gateway",
@@ -42,15 +40,19 @@ export interface Env {
 		  // AI pitch requests → AI worker
 		  response = await forwardToWorker(env.AI_WORKER, request, path, url.search);
   
-		} else if (path.startsWith("/api/movies") || path.startsWith("/api/watchlist")) {
-		  // Movie data, reviews, watchlist → Data worker
+		} else if (
+		  path.startsWith("/api/movies") ||
+		  path.startsWith("/api/watchlist") ||
+		  path.startsWith("/api/tv") ||
+		  path.startsWith("/api/providers")
+		) {
+		  // Movie data, TV shows, providers, reviews, watchlist → Data worker
 		  response = await forwardToWorker(env.DATA_WORKER, request, path, url.search);
   
 		} else {
 		  response = Response.json({ error: "Not found", path }, { status: 404 });
 		}
   
-		// Add CORS headers to every response
 		return addCorsHeaders(response);
   
 	  } catch (error) {
@@ -62,18 +64,14 @@ export interface Env {
 	},
   };
   
-  // Forward request to a worker via Service Binding
-  // This calls the worker directly — no HTTP, no DNS, no routing
   async function forwardToWorker(
 	worker: Fetcher,
 	originalRequest: Request,
 	path: string,
 	search: string
   ): Promise<Response> {
-	// Build a new URL — the domain doesn't matter for Service Bindings,
-	// only the path matters. The worker receives it as a normal request.
 	const internalUrl = `https://internal${path}${search}`;
-	console.log(internalUrl);
+  
 	const response = await worker.fetch(internalUrl, {
 	  method: originalRequest.method,
 	  headers: originalRequest.headers,
@@ -83,7 +81,6 @@ export interface Env {
 	return response;
   }
   
-  // Add CORS headers to any response
   function addCorsHeaders(response: Response): Response {
 	const newHeaders = new Headers(response.headers);
 	Object.entries(corsHeaders).forEach(([key, value]) => {

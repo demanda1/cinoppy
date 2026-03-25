@@ -1,10 +1,3 @@
-// ============================================
-// CINOPPY — API Client
-// ============================================
-// All communication with the gateway worker
-// goes through this file. The frontend never
-// calls TMDB, Gemini, or Supabase directly.
-
 const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8787";
 
 // --- Types ---
@@ -61,6 +54,25 @@ export interface WatchlistItem {
   movies?: Movie;
 }
 
+export interface SimilarMovie {
+  title: string;
+  year: number;
+  reason: string;
+}
+
+export interface ComparisonPoint {
+  aspect: string;
+  movie1: string;
+  movie2: string;
+}
+
+export interface MovieComparison {
+  points: ComparisonPoint[];
+  watch_movie1_if: string;
+  watch_movie2_if: string;
+  verdict: string;
+}
+
 // --- Helper ---
 
 async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<any> {
@@ -88,7 +100,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<an
   return res.json();
 }
 
-// --- Movie APIs ---
+// --- Movie List APIs ---
 
 export async function searchMovies(query: string): Promise<Movie[]> {
   const data = await apiFetch(`/api/movies/search?q=${encodeURIComponent(query)}`);
@@ -149,11 +161,31 @@ export async function getTVProviders(): Promise<Provider[]> {
   return data.results;
 }
 
-// --- Pitch API ---
+// --- AI Pitch ---
 
 export async function getMoviePitch(movieId: number): Promise<Pitch> {
   const data = await apiFetch(`/api/movies/${movieId}/pitch`);
   return data.pitch;
+}
+
+// --- AI Similar Movies ---
+
+export async function getSimilarMovies(movieId: number): Promise<SimilarMovie[]> {
+  const data = await apiFetch(`/api/movies/${movieId}/similar`);
+  return data.similar;
+}
+
+// --- AI Movie Comparison ---
+
+export async function compareMovies(
+  movieId1: number,
+  movieId2: number
+): Promise<{ movie1: string; movie2: string; comparison: MovieComparison }> {
+  const data = await apiFetch("/api/ai/compare", {
+    method: "POST",
+    body: JSON.stringify({ movie_id_1: movieId1, movie_id_2: movieId2 }),
+  });
+  return data;
 }
 
 // --- Review APIs ---

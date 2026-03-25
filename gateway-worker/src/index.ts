@@ -36,8 +36,12 @@ export interface Env {
 			timestamp: new Date().toISOString(),
 		  });
   
-		} else if (path.startsWith("/api/movies") && path.includes("/pitch")) {
-		  // AI pitch requests → AI worker
+		} else if (
+		  (path.startsWith("/api/movies") && path.includes("/pitch")) ||
+		  (path.startsWith("/api/movies") && path.includes("/similar")) ||
+		  path.startsWith("/api/ai")
+		) {
+		  // AI features → AI worker
 		  response = await forwardToWorker(env.AI_WORKER, request, path, url.search);
   
 		} else if (
@@ -46,7 +50,7 @@ export interface Env {
 		  path.startsWith("/api/tv") ||
 		  path.startsWith("/api/providers")
 		) {
-		  // Movie data, TV shows, providers, reviews, watchlist → Data worker
+		  // Data features → Data worker
 		  response = await forwardToWorker(env.DATA_WORKER, request, path, url.search);
   
 		} else {
@@ -71,14 +75,11 @@ export interface Env {
 	search: string
   ): Promise<Response> {
 	const internalUrl = `https://internal${path}${search}`;
-  
-	const response = await worker.fetch(internalUrl, {
+	return await worker.fetch(internalUrl, {
 	  method: originalRequest.method,
 	  headers: originalRequest.headers,
 	  body: originalRequest.method !== "GET" ? originalRequest.body : undefined,
 	});
-  
-	return response;
   }
   
   function addCorsHeaders(response: Response): Response {
@@ -86,7 +87,6 @@ export interface Env {
 	Object.entries(corsHeaders).forEach(([key, value]) => {
 	  newHeaders.set(key, value);
 	});
-  
 	return new Response(response.body, {
 	  status: response.status,
 	  statusText: response.statusText,

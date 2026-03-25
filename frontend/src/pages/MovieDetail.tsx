@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getMovieDetails, getMoviePitch, getReviews } from "@/lib/api";
-import type { Movie, Pitch, Review } from "@/lib/api";
+import { getMovieDetails, getMoviePitch, getReviews, getSimilarMovies} from "@/lib/api";
+import type { Movie, Pitch, Review, SimilarMovie } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
+import CompareModal from "@/components/CompareModal";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
@@ -16,10 +18,13 @@ export default function MovieDetail() {
   const [pitch, setPitch] = useState<Pitch | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [similar, setSimilar] = useState<SimilarMovie[]>([]);
   const [movieLoading, setMovieLoading] = useState(true);
   const [pitchLoading, setPitchLoading] = useState(true);
+  const [similarLoading, setSimilarLoading] = useState(false);
   const [movieError, setMovieError] = useState<string | null>(null);
   const [pitchError, setPitchError] = useState<string | null>(null);
+  const [showCompare, setShowCompare] = useState(false);
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
@@ -33,6 +38,10 @@ export default function MovieDetail() {
 
   useEffect(() => {
     if (!movieId) return;
+
+    // Reset states when movie changes
+    setSimilar([]);
+    setSimilarLoading(false);
 
     async function fetchAll() {
       try {
@@ -73,6 +82,15 @@ export default function MovieDetail() {
     } catch {}
   }
 
+  async function handleFindSimilar() {
+    setSimilarLoading(true);
+    try {
+      const data = await getSimilarMovies(movieId);
+      setSimilar(data);
+    } catch {}
+    setSimilarLoading(false);
+  }
+
   if (movieLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8">
@@ -81,7 +99,6 @@ export default function MovieDetail() {
           <div className="flex-1 space-y-4">
             <div className="h-8 w-3/4 bg-secondary animate-pulse rounded-lg" />
             <div className="h-4 w-1/2 bg-secondary animate-pulse rounded-lg" />
-            <div className="h-4 w-1/3 bg-secondary animate-pulse rounded-lg" />
             <div className="h-32 bg-secondary animate-pulse rounded-xl" />
           </div>
         </div>
@@ -108,11 +125,7 @@ export default function MovieDetail() {
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-64 shrink-0 mx-auto md:mx-0">
           {movie.poster_url ? (
-            <img
-              src={movie.poster_url}
-              alt={movie.title}
-              className="w-full rounded-xl shadow-2xl shadow-cinoppy-purple/10"
-            />
+            <img src={movie.poster_url} alt={movie.title} className="w-full rounded-xl shadow-2xl shadow-cinoppy-purple/10" />
           ) : (
             <div className="w-full aspect-[2/3] rounded-xl bg-secondary flex items-center justify-center text-muted-foreground">
               No poster
@@ -121,7 +134,6 @@ export default function MovieDetail() {
         </div>
 
         <div className="flex-1 space-y-5">
-          {/* Title */}
           <div>
             <h1 className="text-3xl font-bold text-foreground">{movie.title}</h1>
             <p className="text-muted-foreground mt-1">
@@ -132,22 +144,16 @@ export default function MovieDetail() {
             </p>
           </div>
 
-          {/* Genres */}
           {genres.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {genres.map((genre) => (
-                <Badge
-                  key={genre}
-                  variant="secondary"
-                  className="bg-cinoppy-purple/10 text-cinoppy-purple border border-cinoppy-purple/20"
-                >
+                <Badge key={genre} variant="secondary" className="bg-cinoppy-purple/10 text-cinoppy-purple border border-cinoppy-purple/20">
                   {genre}
                 </Badge>
               ))}
             </div>
           )}
 
-          {/* Cast */}
           {actors.length > 0 && (
             <div>
               <span className="text-sm text-muted-foreground">Starring </span>
@@ -155,7 +161,6 @@ export default function MovieDetail() {
             </div>
           )}
 
-          {/* Rating */}
           {movie.tmdb_rating > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-cinoppy-amber">★ {movie.tmdb_rating.toFixed(1)}</span>
@@ -165,9 +170,7 @@ export default function MovieDetail() {
 
           {/* AI Pitch */}
           <div className="pitch-card rounded-xl p-5">
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3 text-gradient">
-              Cinoppy pitch
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3 text-gradient">Cinoppy pitch</p>
             {pitchLoading ? (
               <div className="space-y-2">
                 <div className="h-4 bg-secondary animate-pulse rounded w-full" />
@@ -180,27 +183,75 @@ export default function MovieDetail() {
             ) : pitch ? (
               <div>
                 <p className="text-sm leading-relaxed text-foreground/90">{pitch.pitch_text}</p>
-                <p className="text-xs text-muted-foreground/60 mt-3">
-                  Crafted by {pitch.model_used === "gemini" ? "Gemini AI" : "Hugging Face"}
-                </p>
+                <p className="text-xs text-muted-foreground/60 mt-3">Crafted by {pitch.model_used === "gemini" ? "Gemini AI" : "Hugging Face"}</p>
               </div>
             ) : null}
+          </div>
+
+          {/* AI Action Buttons */}
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleFindSimilar}
+              disabled={similarLoading}
+              className="border-cinoppy-blue/30 text-cinoppy-blue hover:bg-cinoppy-blue/10"
+            >
+              {similarLoading ? "Finding..." : "Find similar movies"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCompare(true)}
+              className="border-cinoppy-pink/30 text-cinoppy-pink hover:bg-cinoppy-pink/10"
+            >
+              Compare with another
+            </Button>
           </div>
         </div>
       </div>
 
+      {/* AI Similar Movies */}
+      {similar.length > 0 && (
+        <div className="mt-10 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-1 rounded-full bg-cinoppy-blue" />
+            <h2 className="text-lg font-semibold">If you liked {movie.title}...</h2>
+          </div>
+          <div className="grid gap-3">
+            {similar.map((s, i) => (
+              <div key={i} className="rounded-xl bg-card border border-border/30 p-4 flex items-start gap-4">
+                <span className="text-2xl font-bold text-cinoppy-blue/30">{i + 1}</span>
+                <div>
+                  <p className="font-medium text-foreground">
+                    {s.title} <span className="text-muted-foreground font-normal">({s.year})</span>
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">{s.reason}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Compare Modal */}
+      {showCompare && (
+        <CompareModal
+          movieId={movieId}
+          movieTitle={movie.title}
+          onClose={() => setShowCompare(false)}
+        />
+      )}
+
       {/* Reviews section */}
-      <div className="mt-14 space-y-6">
+      <div className="mt-12 space-y-6">
         <div className="flex items-center gap-3">
           <div className="h-6 w-1 rounded-full bg-cinoppy-green" />
-          <h2 className="text-xl font-semibold">
-            Reviews {reviews.length > 0 && (
-              <span className="text-muted-foreground font-normal text-base">({reviews.length})</span>
-            )}
+          <h2 className="text-lg font-semibold">
+            Reviews {reviews.length > 0 && <span className="text-muted-foreground font-normal text-base">({reviews.length})</span>}
           </h2>
         </div>
 
-        {/* Review form */}
         <ReviewForm
           movieId={movieId}
           user={user}
@@ -208,35 +259,24 @@ export default function MovieDetail() {
           onReviewSubmitted={fetchReviews}
         />
 
-        {/* Reviews list */}
         {reviews.length === 0 ? (
           <p className="text-muted-foreground text-sm">No reviews yet. Be the first!</p>
         ) : (
           <div className="space-y-3">
             {reviews.map((review) => (
-              <div
-                key={review.id}
-                className="rounded-xl bg-card border border-border/30 p-4"
-              >
+              <div key={review.id} className="rounded-xl bg-card border border-border/30 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-cinoppy-cyan">
-                    🎭 {review.profiles?.display_name || "anonymous"}
-                  </span>
+                  <span className="text-sm font-medium text-cinoppy-cyan">🎭 {review.profiles?.display_name || "anonymous"}</span>
                   <StarRating value={review.rating} size="sm" />
                 </div>
-                {review.review_text && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">{review.review_text}</p>
-                )}
-                <p className="text-xs text-muted-foreground/50 mt-2">
-                  {new Date(review.created_at).toLocaleDateString()}
-                </p>
+                {review.review_text && <p className="text-sm text-muted-foreground leading-relaxed">{review.review_text}</p>}
+                <p className="text-xs text-muted-foreground/50 mt-2">{new Date(review.created_at).toLocaleDateString()}</p>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* TMDB attribution */}
       <div className="mt-14 pt-4 border-t border-border/30 text-xs text-muted-foreground/40">
         This product uses the TMDB API but is not endorsed or certified by TMDB.
       </div>

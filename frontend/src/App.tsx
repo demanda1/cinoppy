@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Home from "@/pages/Home";
 import SearchResults from "@/pages/SearchResults";
-import MovieDetail from "./pages/MovieDetail";
+import MovieDetail from "@/pages/MovieDetail";
 import { getCurrentUser, logOut, onAuthChange } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 
@@ -11,10 +11,10 @@ export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user already has a session (read-only, never creates accounts)
     getCurrentUser().then(setUser);
 
-    // Listen for auth changes (login, logout, token refresh)
+    // Listen for ONLY explicit sign-in/sign-out events
     const { data: { subscription } } = onAuthChange(setUser);
     return () => subscription.unsubscribe();
   }, []);

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { getMovieDetails, getMoviePitch, getReviews, getSimilarMovies} from "@/lib/api";
+import { useParams, useNavigate } from "react-router-dom";
+import { getMovieDetails, getMoviePitch, getReviews, getSimilarMovies, searchMovies } from "@/lib/api";
 import type { Movie, Pitch, Review, SimilarMovie } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";
@@ -13,6 +14,7 @@ import CompareModal from "@/components/CompareModal";
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const movieId = parseInt(id || "0");
+  const navigate = useNavigate();
 
   const [movie, setMovie] = useState<Movie | null>(null);
   const [pitch, setPitch] = useState<Pitch | null>(null);
@@ -57,15 +59,26 @@ export default function MovieDetail() {
         setMovieLoading(false);
       }
 
-      try {
-        setPitchLoading(true);
-        const data = await getMoviePitch(movieId);
-        setPitch(data);
-      } catch (err) {
-        setPitchError(err instanceof Error ? err.message : "Failed to load pitch");
-      } finally {
-        setPitchLoading(false);
+      // Fetch pitch and similar in parallel (both need movie to be cached first)
+      setPitchLoading(true);
+      setSimilarLoading(true);
+
+      const [pitchResult, similarResult] = await Promise.allSettled([
+        getMoviePitch(movieId),
+        getSimilarMovies(movieId),
+      ]);
+
+      if (pitchResult.status === "fulfilled") {
+        setPitch(pitchResult.value);
+      } else {
+        setPitchError("Failed to load pitch");
       }
+      setPitchLoading(false);
+
+      if (similarResult.status === "fulfilled") {
+        setSimilar(similarResult.value);
+      }
+      setSimilarLoading(false);
     }
     fetchAll();
   }, [movieId]);
@@ -80,15 +93,6 @@ export default function MovieDetail() {
       const data = await getReviews(movieId);
       setReviews(data);
     } catch {}
-  }
-
-  async function handleFindSimilar() {
-    setSimilarLoading(true);
-    try {
-      const data = await getSimilarMovies(movieId);
-      setSimilar(data);
-    } catch {}
-    setSimilarLoading(false);
   }
 
   if (movieLoading) {
@@ -188,17 +192,8 @@ export default function MovieDetail() {
             ) : null}
           </div>
 
-          {/* AI Action Buttons */}
+          {/* AI Action Button — only compare remains */}
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleFindSimilar}
-              disabled={similarLoading}
-              className="border-cinoppy-blue/30 text-cinoppy-blue hover:bg-cinoppy-blue/10"
-            >
-              {similarLoading ? "Finding..." : "Find similar movies"}
-            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -211,13 +206,20 @@ export default function MovieDetail() {
         </div>
       </div>
 
-      {/* AI Similar Movies */}
-      {similar.length > 0 && (
-        <div className="mt-10 space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="h-6 w-1 rounded-full bg-cinoppy-blue" />
-            <h2 className="text-lg font-semibold">If you liked {movie.title}...</h2>
+      {/* You may also like — loads automatically */}
+      <div className="mt-10 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-6 w-1 rounded-full bg-cinoppy-blue" />
+          <h2 className="text-lg font-semibold">You may also like</h2>
+        </div>
+
+        {similarLoading ? (
+          <div className="grid gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-16 rounded-xl bg-secondary animate-pulse" />
+            ))}
           </div>
+        ) : similar.length > 0 ? (
           <div className="grid gap-3">
             {similar.map((s, i) => (
               <div key={i} className="rounded-xl bg-card border border-border/30 p-4 flex items-start gap-4">
@@ -231,8 +233,10 @@ export default function MovieDetail() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">Couldn't find similar movies right now.</p>
+        )}
+      </div>
 
       {/* Compare Modal */}
       {showCompare && (

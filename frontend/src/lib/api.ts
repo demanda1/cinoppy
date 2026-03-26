@@ -100,6 +100,22 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<an
   return res.json();
 }
 
+// --- Home page (all sections in one call) ---
+
+export interface HomePageData {
+  trending: Movie[];
+  now_playing: Movie[];
+  popular: Movie[];
+  upcoming: Movie[];
+  top_rated: Movie[];
+  popular_tv: TVShow[];
+  top_rated_tv: TVShow[];
+}
+
+export async function getHomePage(): Promise<HomePageData> {
+  return await apiFetch("/api/home");
+}
+
 // --- Movie List APIs ---
 
 export async function searchMovies(query: string): Promise<Movie[]> {

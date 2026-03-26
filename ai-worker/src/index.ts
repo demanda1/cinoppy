@@ -271,6 +271,7 @@ Suggest exactly 3 similar ${type} I would enjoy.
 Rules:
 - Return ONLY a JSON array, no other text, no markdown, no code blocks.
 - Each item: {"title":"...", "year": ..., "reason":"..."}
+- all items must be inside a single array bracket
 - The reason must be under 15 words.
 - Do NOT suggest the same ${type}
 
@@ -282,12 +283,20 @@ JSON array for similar ${type} like "${content.title}":`;
   let responseText: string | null = null;
 
   try {
-    responseText = await callGemini(prompt, env, "geminiModel6");
+    responseText = await callGemini(prompt, env, "geminiModel4");
   } catch {
     try {
-      responseText = await callHuggingFace(prompt, env);
+      responseText = await callGemini(prompt, env, "geminiModel5");
     } catch {
-      return Response.json({ error: "Both AI providers failed" }, { status: 503 });
+      try {
+        responseText = await callGemini(prompt, env, "geminiModel6");
+      } catch {
+        try {
+          responseText = await callGemini(prompt, env, "geminiModel7");
+        } catch {
+          return Response.json({ error: "Both AI providers failed" }, { status: 503 });
+        }
+      }
     }
   }
 
@@ -309,7 +318,18 @@ JSON array for similar ${type} like "${content.title}":`;
     }
     
     cleaned = cleaned.substring(startIndex, endIndex + 1);
-    const similar = JSON.parse(cleaned);
+    let similar = JSON.parse(cleaned);
+    // FIX: If the AI returned [[{movie}, {movie}]], turn it into [{movie}, {movie}]
+    if (Array.isArray(similar) && Array.isArray(similar[0])) {
+        console.log("Detected nested array, flattening...");
+        similar = similar.flat();
+    }
+
+    // Double check: If it's still not an array (or empty), throw error
+    if (!Array.isArray(similar)) {
+      throw new Error("Result is not an array");
+  }
+
     return Response.json({ movie: content.title, similar, source: "ai" });
   } catch {
     // If parsing fails, try to extract movie suggestions manually
@@ -434,7 +454,7 @@ Now compare "${content1.title}" vs "${content2.title}":`;
 async function callGemini(prompt: string, env: Env, model: keyof typeof GEMINI_MODELS = "geminiModel4"): Promise<string> {
   const url = GEMINI_MODELS[model];
 
-  const res = await fetch(`${url}?key=${env.GEMINI_API_KEY}`, {
+  const res = await fetch(`${url}:generateContent?key=${env.GEMINI_API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

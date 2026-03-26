@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
-import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies } from "@/lib/api";
+import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies, searchMovies } from "@/lib/api";
 import type { Movie, Review, SimilarMovie } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
@@ -9,10 +10,13 @@ import { Button } from "@/components/ui/button";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";
+import MovieCard from "@/components/MovieCard";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const movieId = parseInt(id || "0");
+  const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const [movie, setMovie] = useState<Movie | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -24,11 +28,39 @@ export default function MovieDetail() {
   const [showCompare, setShowCompare] = useState(false);
   const [streamingPitch, setStreamingPitch] = useState("");
   const [streamPitchError, setStreamPitchError] = useState("");
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Movie[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
     if (Array.isArray(field)) return field;
     try { return JSON.parse(field); } catch { return []; }
+  }
+
+  async function handleSearch(title: string) {
+    if (!title.trim()) return;
+    setSearching(true);
+    setError(null);
+    try {
+      console.log("searching:",title);
+      const results = await searchMovies(title);
+      const sameTypeMovie = results.filter((m) => m.id !== movieId).slice(0, 1) as Movie[];
+      setSearchResults((prev) => {
+        // Check if the movie we found is already in our 'prev' list
+        const isDuplicate = prev.some(existing => existing.id === sameTypeMovie[0]?.id);
+  
+        if (isDuplicate || sameTypeMovie.length === 0) {
+          return prev; // Return existing state unchanged
+        }
+  
+        return [...prev, ...sameTypeMovie];
+      });
+    } catch {
+      setError("Search failed");
+    }
+    setSearching(false);
   }
 
   useEffect(() => {
@@ -40,6 +72,7 @@ export default function MovieDetail() {
     // Reset states when movie changes
     setSimilar([]);
     setSimilarLoading(false);
+    setSearchResults([]);
     const abortController = new AbortController();
 
     async function fetchAll() {
@@ -64,7 +97,6 @@ export default function MovieDetail() {
         try {
           // 2. Pass the signal to your stream function
           await getMoviePitchStream(movieId, (newChunk) => {
-            console.log("new chunk", newChunk);
             setStreamingPitch((prevText) => prevText + newChunk);
           }, abortController.signal);
         } catch (error: any) {
@@ -90,7 +122,12 @@ export default function MovieDetail() {
       }
 
       if (similarResult.status === "fulfilled") {
+        console.log("handlingSearch for:", similarResult.value);
         setSimilar(similarResult.value);
+        similarResult.value.map((m)=>{
+          console.log("searching for:", m.title);
+          handleSearch(m.title)
+        })
       }
       setSimilarLoading(false);
     }
@@ -216,32 +253,21 @@ export default function MovieDetail() {
       <div className="mt-10 space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-6 w-1 rounded-full bg-cinoppy-blue" />
-          <h2 className="text-lg font-semibold">You may also like</h2>
+          <h2 className="text-lg font-semibold">You may also like ...</h2>
         </div>
 
-        {similarLoading ? (
-          <div className="grid gap-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-16 rounded-xl bg-secondary animate-pulse" />
-            ))}
-          </div>
-        ) : similar.length > 0 ? (
-          <div className="grid gap-3">
-            {similar.map((s, i) => (
-              <div key={i} className="rounded-xl bg-card border border-border/30 p-4 flex items-start gap-4">
-                <span className="text-2xl font-bold text-cinoppy-blue/30">{i + 1}</span>
-                <div>
-                  <p className="font-medium text-foreground">
-                    {s.title} <span className="text-muted-foreground font-normal">({s.year})</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">{s.reason}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Couldn't find similar movies right now.</p>
-        )}
+        <div
+          ref={scrollRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide pb-2"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {searchResults.map((m) => (
+            <div key={m.id} className="w-40 shrink-0">
+              <MovieCard movie={m as Movie} />
+            </div>
+          ))}
+        </div>
+
       </div>
 
       {/* Compare Modal */}

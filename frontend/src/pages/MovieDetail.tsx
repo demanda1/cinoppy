@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { getMovieDetails, getMoviePitch, getReviews, getSimilarMovies, searchMovies } from "@/lib/api";
+import { useParams } from "react-router-dom";
+import { getMovieDetails, getMoviePitch, getReviews, getSimilarMovies } from "@/lib/api";
 import type { Movie, Pitch, Review, SimilarMovie } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";
@@ -14,7 +13,6 @@ import CompareModal from "@/components/CompareModal";
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const movieId = parseInt(id || "0");
-  const navigate = useNavigate();
 
   const [movie, setMovie] = useState<Movie | null>(null);
   const [pitch, setPitch] = useState<Pitch | null>(null);

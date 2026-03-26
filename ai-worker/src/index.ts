@@ -6,7 +6,11 @@ export interface Env {
   ENVIRONMENT: string;
 }
 
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const GEMINI_MODELS = {
+  lite: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
+  flash: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+  pro: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+};
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -75,7 +79,7 @@ async function generatePitch(movieId: number, env: Env): Promise<Response> {
   let modelUsed = "gemini";
 
   try {
-    pitchText = await callGemini(prompt, env);
+    pitchText = await callGemini(prompt, env, "lite");
   } catch {
     try {
       pitchText = await callHuggingFace(prompt, env);
@@ -145,28 +149,25 @@ async function generateSimilar(movieId: number, env: Env): Promise<Response> {
   try { genres = JSON.parse(movie.genres); } catch { genres = []; }
   try { actors = JSON.parse(movie.lead_actors); } catch { actors = []; }
 
-  const prompt = `I just watched "${movie.title}" (${movie.release_year}) directed by ${movie.director || "Unknown"}.
-Genres: ${genres.join(", ")}
-Actors: ${actors.join(", ")}
+  const prompt = `I just watched "${movie.title}" (${movie.release_year}) directed by ${movie.director || "Unknown"}, Genres: ${genres.join(", ")}
 
-Suggest exactly 5 similar movies I would enjoy. Not just same genre — match the VIBE, tone, and feel.
+Suggest exactly 3 similar movies I would enjoy.
 
 Rules:
-- Return ONLY a JSON array, no other text
-- Each item must have: "title" (string), "year" (number), "reason" (string, one casual sentence explaining why it's similar)
-- The reason should reference the original movie's vibe
+- Return ONLY a JSON array, no other text, no markdown, no code blocks.
+- Each item: {"title":"...", "year": ..., "reason":"..."}
+- The reason must be under 15 words.
 - Do NOT suggest the same movie
-- Do NOT include any markdown formatting or code blocks
 
 Example format:
 [{"title":"Interstellar","year":2014,"reason":"Same mind-bending Nolan energy but traded dreams for black holes."},{"title":"The Matrix","year":1999,"reason":"Another reality-questioning thriller that rewards multiple watches."}]
 
-Now suggest 5 movies similar to "${movie.title}":`;
+JSON array for similar movies like "${movie.title}":`;
 
   let responseText: string | null = null;
 
   try {
-    responseText = await callGemini(prompt, env);
+    responseText = await callGemini(prompt, env, "lite");
   } catch {
     try {
       responseText = await callHuggingFace(prompt, env);
@@ -262,7 +263,7 @@ Now compare "${movie1.title}" vs "${movie2.title}":`;
   let responseText: string | null = null;
 
   try {
-    responseText = await callGemini(prompt, env);
+    responseText = await callGemini(prompt, env, "flash");
   } catch {
     try {
       responseText = await callHuggingFace(prompt, env);
@@ -307,9 +308,11 @@ Now compare "${movie1.title}" vs "${movie2.title}":`;
 // GEMINI API
 // ============================================
 
-async function callGemini(prompt: string, env: Env): Promise<string> {
+async function callGemini(prompt: string, env: Env, model: keyof typeof GEMINI_MODELS = "lite"): Promise<string> {
+  const url = GEMINI_MODELS[model];
+
   for (let attempt = 1; attempt <= 2; attempt++) {
-    const res = await fetch(`${GEMINI_URL}?key=${env.GEMINI_API_KEY}`, {
+    const res = await fetch(`${url}?key=${env.GEMINI_API_KEY}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

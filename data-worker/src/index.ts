@@ -1,13 +1,3 @@
-// ============================================
-// CINOPPY — Data Worker
-// ============================================
-// Handles all movie data operations:
-//   - Search movies (TMDB API)
-//   - Get movie details (TMDB → cache in Supabase)
-//   - Get/post reviews (Supabase)
-//   - Get/add/remove watchlist (Supabase)
-//   - Get trending movies (TMDB API)
-
 export interface Env {
 	SUPABASE_URL: string;
 	SUPABASE_PUBLISHABLE_KEY: string;
@@ -61,6 +51,14 @@ export interface Env {
 	  const method = request.method;
   
 	  try {
+		// ============================================
+		// HOME PAGE (all sections in one call)
+		// ============================================
+  
+		if (path === "/api/home" && method === "GET") {
+		  return await getHomePage(env);
+		}
+  
 		// ============================================
 		// MOVIE LIST ENDPOINTS
 		// ============================================
@@ -205,11 +203,8 @@ export interface Env {
 	return res.json();
   }
   
-  // Reusable: fetch and format a movie list from any TMDB endpoint
-  async function fetchMovieList(tmdbEndpoint: string, env: Env): Promise<Response> {
-	const data = await tmdbFetch(tmdbEndpoint, env);
-  
-	const movies = data.results.slice(0, 20).map((m: TMDBMovie) => ({
+  function formatMovies(data: any): any[] {
+	return data.results.slice(0, 20).map((m: TMDBMovie) => ({
 	  id: m.id,
 	  title: m.title,
 	  poster_url: m.poster_path ? `${TMDB_IMG_BASE}${m.poster_path}` : null,
@@ -217,15 +212,10 @@ export interface Env {
 	  genres: m.genre_ids.map((id: number) => MOVIE_GENRE_MAP[id] || "Unknown"),
 	  tmdb_rating: m.vote_average,
 	}));
-  
-	return Response.json({ results: movies });
   }
   
-  // Reusable: fetch and format a TV show list from any TMDB endpoint
-  async function fetchTVList(tmdbEndpoint: string, env: Env): Promise<Response> {
-	const data = await tmdbFetch(tmdbEndpoint, env);
-  
-	const shows = data.results.slice(0, 20).map((s: TMDBTVShow) => ({
+  function formatTV(data: any): any[] {
+	return data.results.slice(0, 20).map((s: TMDBTVShow) => ({
 	  id: s.id,
 	  title: s.name,
 	  poster_url: s.poster_path ? `${TMDB_IMG_BASE}${s.poster_path}` : null,
@@ -233,21 +223,54 @@ export interface Env {
 	  genres: s.genre_ids.map((id: number) => TV_GENRE_MAP[id] || "Unknown"),
 	  tmdb_rating: s.vote_average,
 	}));
-  
-	return Response.json({ results: shows });
   }
   
-  // Reusable: fetch streaming providers
+  async function fetchMovieList(tmdbEndpoint: string, env: Env): Promise<Response> {
+	const data = await tmdbFetch(tmdbEndpoint, env);
+	return Response.json({ results: formatMovies(data) });
+  }
+  
+  async function fetchTVList(tmdbEndpoint: string, env: Env): Promise<Response> {
+	const data = await tmdbFetch(tmdbEndpoint, env);
+	return Response.json({ results: formatTV(data) });
+  }
+  
   async function fetchProviders(tmdbEndpoint: string, env: Env): Promise<Response> {
 	const data = await tmdbFetch(`${tmdbEndpoint}?language=en-US&watch_region=IN`, env);
-  
 	const providers = data.results.map((p: any) => ({
 	  id: p.provider_id,
 	  name: p.provider_name,
 	  logo_url: p.logo_path ? `${TMDB_IMG_BASE}${p.logo_path}` : null,
 	}));
-  
 	return Response.json({ results: providers });
+  }
+  
+  
+  // ============================================
+  // HOME PAGE (all sections in parallel)
+  // ============================================
+  
+  async function getHomePage(env: Env): Promise<Response> {
+	const [trending, nowPlaying, popular, upcoming, topRated, popularTV, topRatedTV] =
+	  await Promise.all([
+		tmdbFetch("/trending/movie/week?language=en-US", env),
+		tmdbFetch("/movie/now_playing?language=en-US&page=1", env),
+		tmdbFetch("/movie/popular?language=en-US&page=1", env),
+		tmdbFetch("/movie/upcoming?language=en-US&page=1", env),
+		tmdbFetch("/movie/top_rated?language=en-US&page=1", env),
+		tmdbFetch("/tv/popular?language=en-US&page=1", env),
+		tmdbFetch("/tv/top_rated?language=en-US&page=1", env),
+	  ]);
+  
+	return Response.json({
+	  trending: formatMovies(trending),
+	  now_playing: formatMovies(nowPlaying),
+	  popular: formatMovies(popular),
+	  upcoming: formatMovies(upcoming),
+	  top_rated: formatMovies(topRated),
+	  popular_tv: formatTV(popularTV),
+	  top_rated_tv: formatTV(topRatedTV),
+	});
   }
   
   
@@ -256,30 +279,20 @@ export interface Env {
   // ============================================
   
   async function getMovieDetails(movieId: number, env: Env): Promise<Response> {
-	const cached = await supabaseQuery(
-	  env,
-	  `/rest/v1/movies?id=eq.${movieId}&select=*`,
-	  "GET"
-	);
+	const cached = await supabaseQuery(env, `/rest/v1/movies?id=eq.${movieId}&select=*`, "GET");
   
 	if (cached.length > 0) {
 	  return Response.json({ movie: cached[0], source: "cache" });
 	}
   
-	const data = await tmdbFetch(
-	  `/movie/${movieId}?language=en-US&append_to_response=credits`,
-	  env
-	);
+	const data = await tmdbFetch(`/movie/${movieId}?language=en-US&append_to_response=credits`, env);
   
 	const director = data.credits.crew
 	  .filter((c: any) => c.job === "Director")
 	  .map((c: any) => c.name)
 	  .join(", ") || "Unknown";
   
-	const leadActors = data.credits.cast
-	  .slice(0, 3)
-	  .map((c: any) => c.name);
-  
+	const leadActors = data.credits.cast.slice(0, 3).map((c: any) => c.name);
 	const genres = data.genres.map((g: any) => g.name);
   
 	const movie = {
@@ -296,7 +309,6 @@ export interface Env {
 	};
   
 	await supabaseQuery(env, "/rest/v1/movies", "POST", movie);
-  
 	return Response.json({ movie, source: "tmdb" });
   }
   
@@ -364,9 +376,7 @@ export interface Env {
 	return Response.json({ watchlist });
   }
   
-  async function addToWatchlist(
-	movieId: number, authHeader: string, env: Env
-  ): Promise<Response> {
+  async function addToWatchlist(movieId: number, authHeader: string, env: Env): Promise<Response> {
 	const user = await supabaseAuth(authHeader, env);
 	if (!user) {
 	  return Response.json({ error: "Invalid auth token" }, { status: 401 });
@@ -377,9 +387,7 @@ export interface Env {
 	return Response.json({ watchlist: result }, { status: 201 });
   }
   
-  async function removeFromWatchlist(
-	movieId: number, authHeader: string, env: Env
-  ): Promise<Response> {
+  async function removeFromWatchlist(movieId: number, authHeader: string, env: Env): Promise<Response> {
 	const user = await supabaseAuth(authHeader, env);
 	if (!user) {
 	  return Response.json({ error: "Invalid auth token" }, { status: 401 });
@@ -434,7 +442,6 @@ export interface Env {
 	}
   
 	if (method === "DELETE") return null;
-  
 	return res.json();
   }
   
@@ -449,8 +456,7 @@ export interface Env {
 		},
 	  });
 	  if (!res.ok) return null;
-	  const user = await res.json() as { id: string };
-	  return user;
+	  return await res.json() as { id: string };
 	} catch {
 	  return null;
 	}

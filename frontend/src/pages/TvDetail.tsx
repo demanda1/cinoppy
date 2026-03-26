@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getTvDetails, getTvPitchStream, getTvPitch, getReviews, getSimilarTv } from "@/lib/api";
-import type { Pitch, Review, SimilarMovie, TVShow } from "@/lib/api";
+import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv } from "@/lib/api";
+import type { Review, SimilarMovie, TVShow } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -15,19 +15,15 @@ export default function TvDetail() {
   const tvId = parseInt(id || "0");
 
   const [tv, setTv] = useState<TVShow | null>(null);
-  const [pitch, setPitch] = useState<Pitch | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [similar, setSimilar] = useState<SimilarMovie[]>([]);
   const [tvLoading, setTvLoading] = useState(true);
-  const [pitchLoading, setPitchLoading] = useState(true);
   const [similarLoading, setSimilarLoading] = useState(false);
   const [tvError, setTvError] = useState<string | null>(null);
-  const [pitchError, setPitchError] = useState<string | null>(null);
   const [showCompare, setShowCompare] = useState(false);
   const [streamingPitch, setStreamingPitch] = useState("");
   const [streamPitchError, setStreamPitchError] = useState("");
-
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
@@ -41,7 +37,6 @@ export default function TvDetail() {
 
   useEffect(() => {
     if (!tvId) return;
-
     // Reset states when movie changes
     setSimilar([]);
     setSimilarLoading(false);
@@ -55,14 +50,12 @@ export default function TvDetail() {
       } catch (err) {
         setTvError(err instanceof Error ? err.message : "Failed to load movie");
         setTvLoading(false);
-        setPitchLoading(false);
         return;
       } finally {
         setTvLoading(false);
       }
 
       // Fetch pitch and similar in parallel (both need movie to be cached first)
-      setPitchLoading(true);
       setSimilarLoading(true);
       setStreamingPitch("");
       setStreamPitchError("");
@@ -92,6 +85,7 @@ export default function TvDetail() {
       // 4. Handle errors and loading state
       if (streamPitchResult.status === "rejected" && streamPitchResult.reason?.name !== "AbortError") {
         console.error("Stream failed:", streamPitchResult.reason);
+        console.error("StreamingError: ", streamPitchError);
         setStreamPitchError("Failed to load pitch");
       }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies } from "@/lib/api";
-import type { Movie, Pitch, Review, SimilarMovie } from "@/lib/api";
+import type { Movie, Review, SimilarMovie } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -85,6 +85,7 @@ export default function MovieDetail() {
       // 4. Handle errors and loading state
       if (streamPitchResult.status === "rejected" && streamPitchResult.reason?.name !== "AbortError") {
         console.error("Stream failed:", streamPitchResult.reason);
+        console.error("StreamingError: ", streamPitchError);
         setStreamPitchError("Failed to load pitch");
       }
 

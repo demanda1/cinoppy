@@ -1,4 +1,6 @@
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import type { TVShow } from "@/lib/api";
 
 interface TVCardProps {
@@ -6,11 +8,16 @@ interface TVCardProps {
 }
 
 export default function TVCard({ show }: TVCardProps) {
+  const navigate = useNavigate();
   const genres: string[] = typeof show.genres === "string"
     ? (() => { try { return JSON.parse(show.genres); } catch { return []; } })()
     : show.genres || [];
 
   return (
+    <Card
+      className="group cursor-pointer overflow-hidden transition-all hover:scale-[1.02] hover:shadow-lg"
+      onClick={() => navigate(`/tv/${show.id}`)}
+    >
     <div className="group cursor-pointer glow-hover rounded-xl overflow-hidden bg-card border border-border/30">
       <div className="aspect-[2/3] overflow-hidden bg-secondary">
         {show.poster_url ? (
@@ -33,8 +40,8 @@ export default function TVCard({ show }: TVCardProps) {
         </h3>
 
         <div className="flex items-center justify-between">
-          {show.first_air_year && (
-            <span className="text-xs text-muted-foreground">{show.first_air_year}</span>
+          {show.release_year && (
+            <span className="text-xs text-muted-foreground">{show.release_year}</span>
           )}
           {show.tmdb_rating > 0 && (
             <span className="text-xs font-medium text-cinoppy-amber">
@@ -58,5 +65,6 @@ export default function TVCard({ show }: TVCardProps) {
         )}
       </div>
     </div>
+    </Card>
   );
 }

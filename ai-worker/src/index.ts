@@ -7,9 +7,13 @@ export interface Env {
 }
 
 const GEMINI_MODELS = {
-  lite: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent",
-  flash: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
-  pro: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent",
+  geminiModel1: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview",
+  geminiModel2: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview",
+  geminiModel3: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro",
+  geminiModel4: "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-1b-it",
+  geminiModel5: "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it",
+  geminiModel6: "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-12b-it",
+  geminiModel7: "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it"
 };
 
 export default {
@@ -22,20 +26,40 @@ export default {
       const pitchMatch = path.match(/^\/api\/movies\/(\d+)\/pitch$/);
       if (pitchMatch && request.method === "GET") {
         const movieId = parseInt(pitchMatch[1]);
-        return await generatePitch(movieId, env);
+        return await generateStreamingPitch(movieId, env, "movie");
       }
 
       // --- AI Similar Movies ---
       const similarMatch = path.match(/^\/api\/movies\/(\d+)\/similar$/);
       if (similarMatch && request.method === "GET") {
         const movieId = parseInt(similarMatch[1]);
-        return await generateSimilar(movieId, env);
+        return await generateSimilar(movieId, env, "movie");
       }
 
       // --- AI Movie Comparison ---
       if (path === "/api/ai/compare" && request.method === "POST") {
         const body = await request.json() as { movie_id_1: number; movie_id_2: number };
-        return await compareMovies(body.movie_id_1, body.movie_id_2, env);
+        return await compareContent(body.movie_id_1, body.movie_id_2, env, "movie");
+      }
+
+      // --- AI Tv Pitch ---
+      const tvPitchMatch = path.match(/^\/api\/tv\/(\d+)\/pitch$/);
+      if (tvPitchMatch && request.method === "GET") {
+        const tvId = parseInt(tvPitchMatch[1]);
+        return await generateStreamingPitch(tvId, env, "tv series");
+      }
+
+      // --- AI Similar Tv ---
+      const similarTvMatch = path.match(/^\/api\/tv\/(\d+)\/similar$/);
+      if (similarTvMatch && request.method === "GET") {
+        const tvId = parseInt(similarTvMatch[1]);
+        return await generateSimilar(tvId, env, "tv series");
+      }
+
+      // --- AI TV Comparison ---
+      if (path === "/api/ai/compare/tv" && request.method === "POST") {
+        const body = await request.json() as { tv_id_1: number; tv_id_2: number };
+        return await compareContent(body.tv_id_1, body.tv_id_2, env, "tv series");
       }
 
       // Health check
@@ -61,25 +85,102 @@ export default {
 // AI PITCH
 // ============================================
 
-async function generatePitch(movieId: number, env: Env): Promise<Response> {
-  const cachedPitch = await supabaseGet(env, `/rest/v1/pitches?movie_id=eq.${movieId}&select=*`);
+async function generateStreamingPitch(movieId: number, env: Env, type: "movie" | "tv series"): Promise<Response> {
+  // 1. You presumably fetch the movie title/details here to build the prompt.
+  // const movieData = await fetchTMDB(movieId, env);
+  let data: any[] = []; 
+  if(type==="movie"){
+     data = await supabaseGet(env, `/rest/v1/movies?id=eq.${movieId}&select=*`);
+  } else {
+    data = await supabaseGet(env, `/rest/v1/tv?id=eq.${movieId}&select=*`);
+  }
+
+
+  if (data.length === 0) {
+    return Response.json({ error:`${type} not found. Open ${type} details first.` }, { status: 404 });
+  }
+
+  const content = data[0];
+  const prompt = buildPitchPrompt(content, type);
+  
+  // 2. Create the text encoder (Streams only understand raw bytes, not strings)
+  const encoder = new TextEncoder();
+
+  // 3. Create a ReadableStream to pump the data
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        // Initialize the generator function
+        const generator = callGeminiStream(prompt, env, "geminiModel4");
+
+        // Loop through the yielded chunks as they arrive
+        for await (const chunk of generator) {
+          // Format the chunk as a Server-Sent Event (SSE)
+          const sseMessage = `data: ${JSON.stringify({ text: chunk })}\n\n`;
+          
+          // Encode to bytes and send it down the pipe
+          controller.enqueue(encoder.encode(sseMessage));
+        }
+
+        // When the loop finishes, send the standard SSE completion signal
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+
+      } catch (error: any) {
+        console.error("Streaming error:", error);
+        // Send the error to the frontend before closing
+        const errorMessage = `data: ${JSON.stringify({ error: error.message || "Stream failed" })}\n\n`;
+        controller.enqueue(encoder.encode(errorMessage));
+      } finally {
+        // Always close the stream to prevent memory leaks and hanging connections
+        controller.close();
+      }
+    }
+  });
+
+  // 4. Return the standard Fetch API Response with SSE headers
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+      // If your Gateway and Worker are on different origins, add CORS here:
+      // "Access-Control-Allow-Origin": "*",
+    }
+  });
+}
+
+async function generatePitch(movieId: number, env: Env, type:String): Promise<Response> {
+  let cachedPitch: any[] = []; 
+  if(type==="movie"){
+    cachedPitch = await supabaseGet(env, `/rest/v1/pitches?movie_id=eq.${movieId}&select=*`);
+  } else {
+   cachedPitch = await supabaseGet(env, `/rest/v1/tvpitches?tv_id=eq.${movieId}&select=*`);
+  }
+  
   if (cachedPitch.length > 0) {
     return Response.json({ pitch: cachedPitch[0], source: "cache" });
   }
 
-  const movieData = await supabaseGet(env, `/rest/v1/movies?id=eq.${movieId}&select=*`);
-  if (movieData.length === 0) {
-    return Response.json({ error: "Movie not found. Open movie details first." }, { status: 404 });
+  let data: any[] = []; 
+  if(type==="movie"){
+     data = await supabaseGet(env, `/rest/v1/movies?id=eq.${movieId}&select=*`);
+  } else {
+    data = await supabaseGet(env, `/rest/v1/tv?id=eq.${movieId}&select=*`);
   }
 
-  const movie = movieData[0];
-  const prompt = buildPitchPrompt(movie);
+
+  if (data.length === 0) {
+    return Response.json({ error:`${type} not found. Open ${type} details first.` }, { status: 404 });
+  }
+
+  const content = data[0];
+  const prompt = buildPitchPrompt(content, type);
 
   let pitchText: string | null = null;
   let modelUsed = "gemini";
 
   try {
-    pitchText = await callGemini(prompt, env, "lite");
+    pitchText = await callGemini(prompt, env, "geminiModel4");
   } catch {
     try {
       pitchText = await callHuggingFace(prompt, env);
@@ -93,25 +194,33 @@ async function generatePitch(movieId: number, env: Env): Promise<Response> {
     return Response.json({ error: "AI returned empty pitch" }, { status: 500 });
   }
 
-  const storedPitch = await supabasePost(env, "/rest/v1/pitches", {
-    movie_id: movieId,
+  let storedPitch: any[] = []; 
+  if(type==="movie"){
+     storedPitch = await supabasePost(env, "/rest/v1/pitches", {
+      movie_id: movieId,
+      pitch_text: pitchText,
+      model_used: modelUsed,
+    });
+ } else {
+   storedPitch = await supabasePost(env, "/rest/v1/tvpitches", {
+    tv_id: movieId,
     pitch_text: pitchText,
     model_used: modelUsed,
   });
-
+ }
   return Response.json({
     pitch: storedPitch[0] || { movie_id: movieId, pitch_text: pitchText, model_used: modelUsed },
     source: modelUsed,
   });
 }
 
-function buildPitchPrompt(movie: any): string {
+function buildPitchPrompt(movie: any, type:String): string {
   let genres: string[] = [];
   let actors: string[] = [];
   try { genres = JSON.parse(movie.genres); } catch { genres = []; }
   try { actors = JSON.parse(movie.lead_actors); } catch { actors = []; }
 
-  return `Write exactly 3 sentences about why someone should watch the movie "${movie.title}" (${movie.release_year}).
+  return `Write exactly 3 sentences about why someone should watch the ${type} "${movie.title}" (${movie.release_year}).
 
 Director: ${movie.director || "Unknown"}
 Actors: ${actors.join(", ") || "Unknown"}
@@ -121,7 +230,7 @@ Rules:
 - Exactly 3 sentences, no more, no less
 - No spoilers, no plot details
 - Casual and fun tone, like recommending to a friend
-- Mention what makes this specific movie unique
+- Mention what makes this specific ${type} unique
 - Do not start with "Imagine", "Picture this", "So", "Okay", or "I just"
 - Do not use first person
 - Output ONLY the 3 sentences, nothing else
@@ -137,37 +246,43 @@ Now write 3 sentences for ${movie.title}:`;
 // AI SIMILAR MOVIES
 // ============================================
 
-async function generateSimilar(movieId: number, env: Env): Promise<Response> {
-  const movieData = await supabaseGet(env, `/rest/v1/movies?id=eq.${movieId}&select=*`);
-  if (movieData.length === 0) {
+async function generateSimilar(movieId: number, env: Env, type: String): Promise<Response> {
+  let data: any[] = []; 
+  if(type==="movie"){
+     data = await supabaseGet(env, `/rest/v1/movies?id=eq.${movieId}&select=*`);
+  } else {
+    data = await supabaseGet(env, `/rest/v1/tv?id=eq.${movieId}&select=*`);
+  }
+  
+  if (data.length === 0) {
     return Response.json({ error: "Movie not found. Open movie details first." }, { status: 404 });
   }
 
-  const movie = movieData[0];
+  const content = data[0];
   let genres: string[] = [];
   let actors: string[] = [];
-  try { genres = JSON.parse(movie.genres); } catch { genres = []; }
-  try { actors = JSON.parse(movie.lead_actors); } catch { actors = []; }
+  try { genres = JSON.parse(content.genres); } catch { genres = []; }
+  try { actors = JSON.parse(content.lead_actors); } catch { actors = []; }
 
-  const prompt = `I just watched "${movie.title}" (${movie.release_year}) directed by ${movie.director || "Unknown"}, Genres: ${genres.join(", ")}
+  const prompt = `I just watched "${content.title}" (${content.release_year}) directed by ${content.director || "Unknown"}, Genres: ${genres.join(", ")}
 
-Suggest exactly 3 similar movies I would enjoy.
+Suggest exactly 3 similar ${type} I would enjoy.
 
 Rules:
 - Return ONLY a JSON array, no other text, no markdown, no code blocks.
 - Each item: {"title":"...", "year": ..., "reason":"..."}
 - The reason must be under 15 words.
-- Do NOT suggest the same movie
+- Do NOT suggest the same ${type}
 
 Example format:
 [{"title":"Interstellar","year":2014,"reason":"Same mind-bending Nolan energy but traded dreams for black holes."},{"title":"The Matrix","year":1999,"reason":"Another reality-questioning thriller that rewards multiple watches."}]
 
-JSON array for similar movies like "${movie.title}":`;
+JSON array for similar ${type} like "${content.title}":`;
 
   let responseText: string | null = null;
 
   try {
-    responseText = await callGemini(prompt, env, "lite");
+    responseText = await callGemini(prompt, env, "geminiModel6");
   } catch {
     try {
       responseText = await callHuggingFace(prompt, env);
@@ -195,7 +310,7 @@ JSON array for similar movies like "${movie.title}":`;
     
     cleaned = cleaned.substring(startIndex, endIndex + 1);
     const similar = JSON.parse(cleaned);
-    return Response.json({ movie: movie.title, similar, source: "ai" });
+    return Response.json({ movie: content.title, similar, source: "ai" });
   } catch {
     // If parsing fails, try to extract movie suggestions manually
     return Response.json({
@@ -210,37 +325,45 @@ JSON array for similar movies like "${movie.title}":`;
 // AI MOVIE COMPARISON
 // ============================================
 
-async function compareMovies(movieId1: number, movieId2: number, env: Env): Promise<Response> {
-  const movie1Data = await supabaseGet(env, `/rest/v1/movies?id=eq.${movieId1}&select=*`);
-  const movie2Data = await supabaseGet(env, `/rest/v1/movies?id=eq.${movieId2}&select=*`);
-
-  if (movie1Data.length === 0 || movie2Data.length === 0) {
-    return Response.json({ error: "One or both movies not found. Open their detail pages first." }, { status: 404 });
+async function compareContent(id1: number, id2: number, env: Env, type: String): Promise<Response> {
+  let data1: any[] = []; 
+  let data2: any[] = []; 
+  
+  if(type === "movie"){
+    data1 = await supabaseGet(env, `/rest/v1/tv?id=eq.${id1}&select=*`);
+    data2 = await supabaseGet(env, `/rest/v1/tv?id=eq.${id2}&select=*`);
+  } else {
+    data1 = await supabaseGet(env, `/rest/v1/movies?id=eq.${id1}&select=*`);
+    data2 = await supabaseGet(env, `/rest/v1/movies?id=eq.${id2}&select=*`);
   }
 
-  const movie1 = movie1Data[0];
-  const movie2 = movie2Data[0];
+  if (data1.length === 0 || data2.length === 0) {
+    return Response.json({ error: `One or both ${type} not found. Open their detail pages first.` }, { status: 404 });
+  }
+
+  const content1 = data1[0];
+  const content2 = data2[0];
 
   let genres1: string[] = [], genres2: string[] = [];
   let actors1: string[] = [], actors2: string[] = [];
-  try { genres1 = JSON.parse(movie1.genres); } catch {}
-  try { genres2 = JSON.parse(movie2.genres); } catch {}
-  try { actors1 = JSON.parse(movie1.lead_actors); } catch {}
-  try { actors2 = JSON.parse(movie2.lead_actors); } catch {}
+  try { genres1 = JSON.parse(content1.genres); } catch {}
+  try { genres2 = JSON.parse(content2.genres); } catch {}
+  try { actors1 = JSON.parse(content1.lead_actors); } catch {}
+  try { actors2 = JSON.parse(content2.lead_actors); } catch {}
 
-  const prompt = `Compare these two movies point by point. Help someone decide which to watch.
+  const prompt = `Compare these two ${type} point by point. Help someone decide which to watch.
 
-Movie 1: "${movie1.title}" (${movie1.release_year})
-- Director: ${movie1.director || "Unknown"}
+Movie 1: "${content1.title}" (${content1.release_year})
+- Director: ${content1.director || "Unknown"}
 - Genres: ${genres1.join(", ")}
 - Actors: ${actors1.join(", ")}
-- TMDB Rating: ${movie1.tmdb_rating}/10
+- TMDB Rating: ${content1.tmdb_rating}/10
 
-Movie 2: "${movie2.title}" (${movie2.release_year})
-- Director: ${movie2.director || "Unknown"}
+Movie 2: "${content2.title}" (${content2.release_year})
+- Director: ${content2.director || "Unknown"}
 - Genres: ${genres2.join(", ")}
 - Actors: ${actors2.join(", ")}
-- TMDB Rating: ${movie2.tmdb_rating}/10
+- TMDB Rating: ${content2.tmdb_rating}/10
 
 Return ONLY a JSON object with no other text, no markdown, no code blocks.
 
@@ -258,12 +381,12 @@ Choose 6 comparison aspects that best highlight the differences between THESE sp
 Example:
 {"points":[{"aspect":"Vibe","movie1":"Dark and cerebral","movie2":"Light and adventurous"},{"aspect":"Pacing","movie1":"Slow burn that rewards patience","movie2":"Non-stop action from minute one"},{"aspect":"Acting","movie1":"Oscar-worthy lead performance","movie2":"Fun ensemble chemistry"},{"aspect":"Visuals","movie1":"Stunning practical effects","movie2":"Vibrant colorful CGI world"},{"aspect":"Emotional impact","movie1":"Will make you question reality","movie2":"Pure feel-good entertainment"},{"aspect":"Best for","movie1":"A solo deep-dive night","movie2":"Movie night with friends"}],"watch_movie1_if":"You want a film that stays in your head for days.","watch_movie2_if":"You want two hours of pure fun without overthinking.","verdict":"Both are great but for completely different moods — pick based on your energy tonight."}
 
-Now compare "${movie1.title}" vs "${movie2.title}":`;
+Now compare "${content1.title}" vs "${content2.title}":`;
 
   let responseText: string | null = null;
 
   try {
-    responseText = await callGemini(prompt, env, "flash");
+    responseText = await callGemini(prompt, env, "geminiModel4");
   } catch {
     try {
       responseText = await callHuggingFace(prompt, env);
@@ -290,8 +413,8 @@ Now compare "${movie1.title}" vs "${movie2.title}":`;
     cleaned = cleaned.substring(startIndex, endIndex + 1);
     const comparison = JSON.parse(cleaned);
     return Response.json({
-      movie1: movie1.title,
-      movie2: movie2.title,
+      movie1: content1.title,
+      movie2: content2.title,
       comparison,
       source: "ai",
     });
@@ -308,54 +431,141 @@ Now compare "${movie1.title}" vs "${movie2.title}":`;
 // GEMINI API
 // ============================================
 
-async function callGemini(prompt: string, env: Env, model: keyof typeof GEMINI_MODELS = "lite"): Promise<string> {
+async function callGemini(prompt: string, env: Env, model: keyof typeof GEMINI_MODELS = "geminiModel4"): Promise<string> {
   const url = GEMINI_MODELS[model];
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const res = await fetch(`${url}?key=${env.GEMINI_API_KEY}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: attempt === 1 ? 0.9 : 0.7,
-          maxOutputTokens: 2048,
-          topP: 0.95,
-        },
-        safetySettings: [
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
-        ],
-      }),
-    });
+  const res = await fetch(`${url}?key=${env.GEMINI_API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 2048,
+        topP: 0.95,
+      },
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+      ],
+    }),
+  });
 
-    if (!res.ok) {
-      const errorBody = await res.text();
-      throw new Error(`Gemini API error (${res.status}): ${errorBody}`);
-    }
-
-    const data = await res.json() as any;
-
-    if (data.candidates?.[0]?.finishReason === "SAFETY") {
-      throw new Error("Gemini blocked the response");
-    }
-
-    const parts = data.candidates?.[0]?.content?.parts;
-    if (!parts || parts.length === 0) {
-      throw new Error("Gemini returned no parts");
-    }
-
-    const text = parts.map((p: any) => p.text || "").join("").trim();
-    if (!text) {
-      throw new Error("Gemini returned empty text");
-    }
-
-    return text;
+  if (!res.ok) {
+    const errorBody = await res.text();
+    throw new Error(`Gemini API error (${res.status}): ${errorBody}`);
   }
 
-  throw new Error("Gemini failed after all attempts");
+  const data = await res.json() as any;
+
+  if (data.candidates?.[0]?.finishReason === "SAFETY") {
+    throw new Error("Gemini blocked the response");
+  }
+
+  const parts = data.candidates?.[0]?.content?.parts;
+  if (!parts || parts.length === 0) {
+    throw new Error("Gemini returned no parts");
+  }
+
+  const text = parts.map((p: any) => p.text || "").join("").trim();
+  if (!text) {
+    throw new Error("Gemini returned empty text");
+  }
+
+  return text;
+}
+
+async function* callGeminiStream( prompt: string, env: Env, model: keyof typeof GEMINI_MODELS = "geminiModel4"
+): AsyncGenerator<string, void, unknown> {
+  
+  const baseUrl = GEMINI_MODELS[model];
+  // 1. Update the URL to request Server-Sent Events (SSE) streaming
+  const url = `${baseUrl}:streamGenerateContent?alt=sse&key=${env.GEMINI_API_KEY}`;
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.9,
+        maxOutputTokens: 5000,
+        topP: 0.95,
+      },
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" },
+      ],
+    }),
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    throw new Error(`Gemini API error (${res.status}): ${errorBody}`);
+  }
+
+  if (!res.body) {
+    throw new Error("Gemini returned no response body");
+  }
+
+  // 2. Read the stream chunk by chunk
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      // Decode the raw bytes into a string and add to our buffer
+      buffer += decoder.decode(value, { stream: true });
+      
+      // SSE sends data separated by newlines
+      const lines = buffer.split("\n");
+      
+      // Keep the last incomplete line in the buffer for the next loop
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.trim() === "") continue;
+        
+        // Gemini SSE lines start with "data: "
+        if (line.startsWith("data: ")) {
+          const dataStr = line.replace("data: ", "").trim();
+          
+          // Some APIs send [DONE] when finished
+          if (dataStr === "[DONE]") return;
+
+          try {
+            const parsed = JSON.parse(dataStr);
+
+            if (parsed.candidates?.[0]?.finishReason === "SAFETY") {
+              throw new Error("Gemini blocked the response");
+            }
+
+            const parts = parsed.candidates?.[0]?.content?.parts;
+            if (parts && parts.length > 0) {
+              const textChunk = parts.map((p: any) => p.text || "").join("");
+              if (textChunk) {
+                // 3. Yield the extracted text immediately
+                yield textChunk;
+              }
+            }
+          } catch (e) {
+            // Ignore incomplete JSON chunks (they'll be caught in the next iteration)
+            console.error("Error parsing JSON chunk from Gemini:", e);
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 
@@ -364,20 +574,25 @@ async function callGemini(prompt: string, env: Env, model: keyof typeof GEMINI_M
 // ============================================
 
 async function callHuggingFace(prompt: string, env: Env): Promise<string> {
-  const model = "mistralai/Mistral-7B-Instruct-v0.3";
+  const model = "zai-org/GLM-5";
 
-  const res = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+  const res = await fetch(`https://router.huggingface.co/v1/chat/completions`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${env.HF_API_TOKEN}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      inputs: `<s>[INST] ${prompt} [/INST]`,
+        model:  `${model}`,
+        messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ], 
       parameters: {
         max_new_tokens: 1024,
-        temperature: 0.9,
-        return_full_text: false,
+        temperature: 0.9
       },
     }),
   });

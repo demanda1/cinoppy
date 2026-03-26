@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies } from "@/lib/api";
-import type { Movie, Pitch, Review, SimilarMovie } from "@/lib/api";
+import { getTvDetails, getTvPitchStream, getTvPitch, getReviews, getSimilarTv } from "@/lib/api";
+import type { Pitch, Review, SimilarMovie, TVShow } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -10,20 +10,24 @@ import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";
 
-export default function MovieDetail() {
+export default function TvDetail() {
   const { id } = useParams<{ id: string }>();
-  const movieId = parseInt(id || "0");
+  const tvId = parseInt(id || "0");
 
-  const [movie, setMovie] = useState<Movie | null>(null);
+  const [tv, setTv] = useState<TVShow | null>(null);
+  const [pitch, setPitch] = useState<Pitch | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [similar, setSimilar] = useState<SimilarMovie[]>([]);
-  const [movieLoading, setMovieLoading] = useState(true);
+  const [tvLoading, setTvLoading] = useState(true);
+  const [pitchLoading, setPitchLoading] = useState(true);
   const [similarLoading, setSimilarLoading] = useState(false);
-  const [movieError, setMovieError] = useState<string | null>(null);
+  const [tvError, setTvError] = useState<string | null>(null);
+  const [pitchError, setPitchError] = useState<string | null>(null);
   const [showCompare, setShowCompare] = useState(false);
   const [streamingPitch, setStreamingPitch] = useState("");
   const [streamPitchError, setStreamPitchError] = useState("");
+
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
@@ -36,7 +40,8 @@ export default function MovieDetail() {
   }, []);
 
   useEffect(() => {
-    if (!movieId) return;
+    if (!tvId) return;
+
     // Reset states when movie changes
     setSimilar([]);
     setSimilarLoading(false);
@@ -44,18 +49,20 @@ export default function MovieDetail() {
 
     async function fetchAll() {
       try {
-        setMovieLoading(true);
-        const data = await getMovieDetails(movieId);
-        setMovie(data);
+        setTvLoading(true);
+        const data = await getTvDetails(tvId);
+        setTv(data);
       } catch (err) {
-        setMovieError(err instanceof Error ? err.message : "Failed to load movie");
-        setMovieLoading(false);
+        setTvError(err instanceof Error ? err.message : "Failed to load movie");
+        setTvLoading(false);
+        setPitchLoading(false);
         return;
       } finally {
-        setMovieLoading(false);
+        setTvLoading(false);
       }
 
       // Fetch pitch and similar in parallel (both need movie to be cached first)
+      setPitchLoading(true);
       setSimilarLoading(true);
       setStreamingPitch("");
       setStreamPitchError("");
@@ -63,7 +70,7 @@ export default function MovieDetail() {
       const streamPitchTask = async () => {
         try {
           // 2. Pass the signal to your stream function
-          await getMoviePitchStream(movieId, (newChunk) => {
+          await getTvPitchStream(tvId, (newChunk) => {
             console.log("new chunk", newChunk);
             setStreamingPitch((prevText) => prevText + newChunk);
           }, abortController.signal);
@@ -79,7 +86,7 @@ export default function MovieDetail() {
 
       const [streamPitchResult, similarResult] = await Promise.allSettled([
         streamPitchTask(),
-        getSimilarMovies(movieId),
+        getSimilarTv(tvId),
       ]);
 
       // 4. Handle errors and loading state
@@ -99,21 +106,21 @@ export default function MovieDetail() {
   return () => {
     abortController.abort();
   };
-  }, [movieId]);
+  }, [tvId]);
 
   useEffect(() => {
-    if (!movieId) return;
+    if (!tvId) return;
     fetchReviews();
-  }, [movieId]);
+  }, [tvId]);
 
   async function fetchReviews() {
     try {
-      const data = await getReviews(movieId);
+      const data = await getReviews(tvId);
       setReviews(data);
     } catch {}
   }
 
-  if (movieLoading) {
+  if (tvLoading) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="flex flex-col md:flex-row gap-8">
@@ -128,26 +135,26 @@ export default function MovieDetail() {
     );
   }
 
-  if (movieError || !movie) {
+  if (tvError || !tv) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-destructive text-sm">
-          {movieError || "Movie not found"}
+          {tvError || "Movie not found"}
         </div>
       </div>
     );
   }
 
-  const genres = parseJsonField(movie.genres);
-  const actors = parseJsonField(movie.lead_actors);
+  const genres = parseJsonField(tv.genres);
+  const actors = parseJsonField(tv.lead_actors);
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* Movie header */}
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-64 shrink-0 mx-auto md:mx-0">
-          {movie.poster_url ? (
-            <img src={movie.poster_url} alt={movie.title} className="w-full rounded-xl shadow-2xl shadow-cinoppy-purple/10" />
+          {tv.poster_url ? (
+            <img src={tv.poster_url} alt={tv.title} className="w-full rounded-xl shadow-2xl shadow-cinoppy-purple/10" />
           ) : (
             <div className="w-full aspect-[2/3] rounded-xl bg-secondary flex items-center justify-center text-muted-foreground">
               No poster
@@ -157,11 +164,11 @@ export default function MovieDetail() {
 
         <div className="flex-1 space-y-5">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{movie.title}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{tv.title}</h1>
             <p className="text-muted-foreground mt-1">
-              {movie.release_year}
-              {movie.director && (
-                <span> · Directed by <span className="text-cinoppy-cyan">{movie.director}</span></span>
+              {tv.release_year}
+              {tv.director && (
+                <span> · Directed by <span className="text-cinoppy-cyan">{tv.director}</span></span>
               )}
             </p>
           </div>
@@ -183,9 +190,9 @@ export default function MovieDetail() {
             </div>
           )}
 
-          {movie.tmdb_rating > 0 && (
+          {tv.tmdb_rating > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-cinoppy-amber">★ {movie.tmdb_rating.toFixed(1)}</span>
+              <span className="text-2xl font-bold text-cinoppy-amber">★ {tv.tmdb_rating.toFixed(1)}</span>
               <span className="text-sm text-muted-foreground">TMDB rating</span>
             </div>
           )}
@@ -246,8 +253,8 @@ export default function MovieDetail() {
       {/* Compare Modal */}
       {showCompare && (
         <CompareModal
-          movieId={movieId}
-          movieTitle={movie.title}
+          movieId={tvId}
+          movieTitle={tv.title}
           onClose={() => setShowCompare(false)}
         />
       )}
@@ -262,7 +269,7 @@ export default function MovieDetail() {
         </div>
 
         <ReviewForm
-          movieId={movieId}
+          movieId={tvId}
           user={user}
           onUserChange={setUser}
           onReviewSubmitted={fetchReviews}

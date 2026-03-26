@@ -94,6 +94,14 @@ export interface Env {
 		// ============================================
 		// TV SHOW ENDPOINTS
 		// ============================================
+
+		if (path === "/api/tv/search" && method === "GET") {
+			const query = url.searchParams.get("q");
+			if (!query) {
+			  return Response.json({ error: "Missing search query ?q=" }, { status: 400 });
+			}
+			return await fetchTVList(`/search/tv?query=${encodeURIComponent(query)}&language=en-US&page=1`, env);
+		  }
   
 		if (path === "/api/tv/popular" && method === "GET") {
 		  return await fetchTVList("/tv/popular?language=en-US&page=1", env);
@@ -123,6 +131,16 @@ export interface Env {
 		if (movieDetailMatch && method === "GET") {
 		  const movieId = parseInt(movieDetailMatch[1]);
 		  return await getMovieDetails(movieId, env);
+		}
+
+		// ============================================
+		// MOVIE DETAIL
+		// ============================================
+  
+		const tvDetailMatch = path.match(/^\/api\/tv\/(\d+)$/);
+		if (tvDetailMatch && method === "GET") {
+		  const tvId = parseInt(tvDetailMatch[1]);
+		  return await getTvDetails(tvId, env);
 		}
   
 		// ============================================
@@ -219,7 +237,7 @@ export interface Env {
 	  id: s.id,
 	  title: s.name,
 	  poster_url: s.poster_path ? `${TMDB_IMG_BASE}${s.poster_path}` : null,
-	  first_air_year: s.first_air_date ? parseInt(s.first_air_date.substring(0, 4)) : null,
+	  release_year: s.first_air_date ? parseInt(s.first_air_date.substring(0, 4)) : null,
 	  genres: s.genre_ids.map((id: number) => TV_GENRE_MAP[id] || "Unknown"),
 	  tmdb_rating: s.vote_average,
 	}));
@@ -310,6 +328,41 @@ export interface Env {
   
 	await supabaseQuery(env, "/rest/v1/movies", "POST", movie);
 	return Response.json({ movie, source: "tmdb" });
+  }
+
+  // ============================================
+  // TV DETAIL
+  // ============================================
+  
+  async function getTvDetails(tvId: number, env: Env): Promise<Response> {
+	const cached = await supabaseQuery(env, `/rest/v1/tv?id=eq.${tvId}&select=*`, "GET");
+  
+	if (cached.length > 0) {
+	  return Response.json({ tv: cached[0], source: "cache" });
+	}
+  
+	const data = await tmdbFetch(`/tv/${tvId}?language=en-US&append_to_response=credits`, env);
+  
+	const director = data.created_by[0].name || "Unknown";
+
+	const leadActors = data.credits.cast.filter((c: any) => c.known_for_department === "Acting").map((c: any) => c.name);
+	const genres = data.genres.map((g: any) => g.name);
+  
+	const tv = {
+	  id: data.id,
+	  title: data.name,
+	  poster_url: data.poster_path ? `${TMDB_IMG_BASE}${data.poster_path}` : null,
+	  release_year: data.first_air_date ? parseInt(data.first_air_date.substring(0, 4))  : null,
+	  genres: JSON.stringify(genres),
+	  director,
+	  lead_actors: JSON.stringify(leadActors),
+	  tmdb_rating: data.vote_average,
+	  overview: data.overview,
+	  cached_at: new Date().toISOString(),
+	};
+  
+	await supabaseQuery(env, "/rest/v1/tv", "POST", tv);
+	return Response.json({ tv, source: "tmdb" });
   }
   
   

@@ -4,6 +4,7 @@ import Navbar from "@/components/Navbar";
 import Home from "@/pages/Home";
 import SearchResults from "@/pages/SearchResults";
 import MovieDetail from "@/pages/MovieDetail";
+import TvDetail from "@/pages/TvDetail";
 import { getCurrentUser, logOut, onAuthChange } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/movie/:id" element={<MovieDetail />} />
+          <Route path="/tv/:id" element={<TvDetail />} />
           {/* We'll add these in the next steps: */}
           {/* <Route path="/watchlist" element={<Watchlist />} /> */}
         </Routes>

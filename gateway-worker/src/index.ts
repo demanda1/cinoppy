@@ -30,8 +30,8 @@ export default {
         });
 
       } else if (
-        (path.startsWith("/api/movies") && path.includes("/pitch")) ||
-        (path.startsWith("/api/movies") && path.includes("/similar")) ||
+        (path.startsWith("/api/") && path.includes("/pitch")) ||
+        (path.startsWith("/api/") && path.includes("/similar")) ||
         path.startsWith("/api/ai")
       ) {
         // AI features → AI worker
@@ -103,6 +103,13 @@ async function forwardToWorker(
       method: originalRequest.method,
       headers: originalRequest.headers,
     });
+
+	// NEW: If the response is a Server-Sent Event stream, do NOT cache it.
+    // Return it immediately so it pipes directly to the user in real-time.
+    const contentType = response.headers.get("Content-Type") || "";
+    if (contentType.includes("text/event-stream")) {
+      return response;
+    }
 
     // Cache the response for 10 minutes
     const responseToCache = new Response(response.body, {

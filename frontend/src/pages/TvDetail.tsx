@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv } from "@/lib/api";
-import type { Review, SimilarMovie, TVShow } from "@/lib/api";
+import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs } from "@/lib/api";
+import type { Review, TVShow } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -9,26 +9,51 @@ import { Button } from "@/components/ui/button";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";
+import TVCard from "@/components/TVCard";
 
 export default function TvDetail() {
   const { id } = useParams<{ id: string }>();
   const tvId = parseInt(id || "0");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const [tv, setTv] = useState<TVShow | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [similar, setSimilar] = useState<SimilarMovie[]>([]);
   const [tvLoading, setTvLoading] = useState(true);
-  const [similarLoading, setSimilarLoading] = useState(false);
   const [tvError, setTvError] = useState<string | null>(null);
   const [showCompare, setShowCompare] = useState(false);
   const [streamingPitch, setStreamingPitch] = useState("");
   const [streamPitchError, setStreamPitchError] = useState("");
+  const [searchResults, setSearchResults] = useState<TVShow[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
     if (Array.isArray(field)) return field;
     try { return JSON.parse(field); } catch { return []; }
+  }
+
+  async function handleSearch(title: string) {
+    if (!title.trim()) return;
+    setError(null);
+    try {
+      console.log("searching:",title);
+      const results = await searchTvs(title);
+      const sameTypeMovie = results.filter((m) => m.id !== tvId).slice(0, 1) as TVShow[];
+      setSearchResults((prev) => {
+        // Check if the movie we found is already in our 'prev' list
+        const isDuplicate = prev.some(existing => existing.id === sameTypeMovie[0]?.id);
+  
+        if (isDuplicate || sameTypeMovie.length === 0) {
+          return prev; // Return existing state unchanged
+        }
+  
+        return [...prev, ...sameTypeMovie];
+      });
+    } catch {
+      console.log(error);
+      setError("Search failed");
+    }
   }
 
   useEffect(() => {
@@ -38,8 +63,7 @@ export default function TvDetail() {
   useEffect(() => {
     if (!tvId) return;
     // Reset states when movie changes
-    setSimilar([]);
-    setSimilarLoading(false);
+    setSearchResults([]);
     const abortController = new AbortController();
 
     async function fetchAll() {
@@ -56,7 +80,6 @@ export default function TvDetail() {
       }
 
       // Fetch pitch and similar in parallel (both need movie to be cached first)
-      setSimilarLoading(true);
       setStreamingPitch("");
       setStreamPitchError("");
 
@@ -64,7 +87,6 @@ export default function TvDetail() {
         try {
           // 2. Pass the signal to your stream function
           await getTvPitchStream(tvId, (newChunk) => {
-            console.log("new chunk", newChunk);
             setStreamingPitch((prevText) => prevText + newChunk);
           }, abortController.signal);
         } catch (error: any) {
@@ -90,9 +112,12 @@ export default function TvDetail() {
       }
 
       if (similarResult.status === "fulfilled") {
-        setSimilar(similarResult.value);
+        console.log("handlingSearch for:", similarResult.value);
+        similarResult.value.map((m)=>{
+          console.log("searching for:", m.title);
+          handleSearch(m.title)
+        })
       }
-      setSimilarLoading(false);
     }
     fetchAll();
     // 4. THIS IS THE MAGIC FIX. 
@@ -216,32 +241,21 @@ export default function TvDetail() {
       <div className="mt-10 space-y-4">
         <div className="flex items-center gap-3">
           <div className="h-6 w-1 rounded-full bg-cinoppy-blue" />
-          <h2 className="text-lg font-semibold">You may also like</h2>
+          <h2 className="text-lg font-semibold">You may also like ...</h2>
         </div>
 
-        {similarLoading ? (
-          <div className="grid gap-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-16 rounded-xl bg-secondary animate-pulse" />
-            ))}
-          </div>
-        ) : similar.length > 0 ? (
-          <div className="grid gap-3">
-            {similar.map((s, i) => (
-              <div key={i} className="rounded-xl bg-card border border-border/30 p-4 flex items-start gap-4">
-                <span className="text-2xl font-bold text-cinoppy-blue/30">{i + 1}</span>
-                <div>
-                  <p className="font-medium text-foreground">
-                    {s.title} <span className="text-muted-foreground font-normal">({s.year})</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">{s.reason}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Couldn't find similar movies right now.</p>
-        )}
+        <div
+          ref={scrollRef}
+          className="flex gap-4 overflow-x-auto scrollbar-hide pb-2"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {searchResults.map((tv) => (
+            <div key={tv.id} className="w-40 shrink-0">
+              <TVCard show={tv as TVShow} />
+            </div>
+          ))}
+        </div>
+
       </div>
 
       {/* Compare Modal */}

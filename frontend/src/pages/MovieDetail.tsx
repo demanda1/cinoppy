@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { useParams } from "react-router-dom";
 import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies, searchMovies } from "@/lib/api";
-import type { Movie, Review, SimilarMovie } from "@/lib/api";
+import type { Movie, Review } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -15,22 +14,17 @@ import MovieCard from "@/components/MovieCard";
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
   const movieId = parseInt(id || "0");
-  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [movie, setMovie] = useState<Movie | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [similar, setSimilar] = useState<SimilarMovie[]>([]);
   const [movieLoading, setMovieLoading] = useState(true);
-  const [similarLoading, setSimilarLoading] = useState(false);
   const [movieError, setMovieError] = useState<string | null>(null);
   const [showCompare, setShowCompare] = useState(false);
   const [streamingPitch, setStreamingPitch] = useState("");
   const [streamPitchError, setStreamPitchError] = useState("");
-  const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
-  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function parseJsonField(field: string | string[] | undefined): string[] {
@@ -41,7 +35,6 @@ export default function MovieDetail() {
 
   async function handleSearch(title: string) {
     if (!title.trim()) return;
-    setSearching(true);
     setError(null);
     try {
       console.log("searching:",title);
@@ -58,9 +51,9 @@ export default function MovieDetail() {
         return [...prev, ...sameTypeMovie];
       });
     } catch {
+      console.log(error);
       setError("Search failed");
     }
-    setSearching(false);
   }
 
   useEffect(() => {
@@ -70,8 +63,6 @@ export default function MovieDetail() {
   useEffect(() => {
     if (!movieId) return;
     // Reset states when movie changes
-    setSimilar([]);
-    setSimilarLoading(false);
     setSearchResults([]);
     const abortController = new AbortController();
 
@@ -89,7 +80,6 @@ export default function MovieDetail() {
       }
 
       // Fetch pitch and similar in parallel (both need movie to be cached first)
-      setSimilarLoading(true);
       setStreamingPitch("");
       setStreamPitchError("");
 
@@ -123,13 +113,11 @@ export default function MovieDetail() {
 
       if (similarResult.status === "fulfilled") {
         console.log("handlingSearch for:", similarResult.value);
-        setSimilar(similarResult.value);
         similarResult.value.map((m)=>{
           console.log("searching for:", m.title);
           handleSearch(m.title)
         })
       }
-      setSimilarLoading(false);
     }
     fetchAll();
     // 4. THIS IS THE MAGIC FIX. 

@@ -5,6 +5,17 @@ export interface Env {
 	TMDB_API_READ_TOKEN: string;
 	ENVIRONMENT: string;
   }
+
+  interface TMDBMulti {
+	id: number;
+	title: string;
+	poster_path: string | null;
+	release_date: string;
+	genre_ids: number[];
+	vote_average: number;
+	overview: string;
+	media_type: string;
+  }
   
   interface TMDBMovie {
 	id: number;
@@ -76,6 +87,14 @@ export interface Env {
 		  }
 		  return await fetchMovieList(`/search/movie?query=${encodeURIComponent(query)}&language=en-US&page=1`, env);
 		}
+
+		if (path === "/api/multi/search" && method === "GET") {
+			const query = url.searchParams.get("q");
+			if (!query) {
+			  return Response.json({ error: "Missing search query ?q=" }, { status: 400 });
+			}
+			return await fetchMultiList(`/search/multi?query=${encodeURIComponent(query)}&language=en-US&page=1`, env);
+		  }
   
 		if (path === "/api/movies/trending" && method === "GET") {
 		  return await fetchMovieList("/trending/movie/week?language=en-US", env);
@@ -232,6 +251,18 @@ export interface Env {
 	}
 	return res.json();
   }
+
+  function formatMulti(data: any): any[] {
+	return data.results.slice(0, 20).map((m: TMDBMulti) => ({
+	  id: m.id,
+	  title: m.title,
+	  poster_url: m.poster_path ? `${TMDB_IMG_BASE}${m.poster_path}` : null,
+	  release_year: m.release_date ? parseInt(m.release_date.substring(0, 4)) : null,
+	  genres: m.genre_ids.map((id: number) => MOVIE_GENRE_MAP[id] || "Unknown"),
+	  tmdb_rating: m.vote_average,
+	  type: m.media_type
+	}));
+  }
   
   function formatMovies(data: any): any[] {
 	return data.results.slice(0, 20).map((m: TMDBMovie) => ({
@@ -277,6 +308,11 @@ export interface Env {
 	  name: p.provider_name,
 	  logo_path: p.logo_path ? `${TMDB_IMG_BASE}${p.logo_path}` : null,
 	}));
+  }
+
+  async function fetchMultiList(tmdbEndpoint: string, env: Env): Promise<Response> {
+	const data = await tmdbFetch(tmdbEndpoint, env);
+	return Response.json({ results: formatMulti(data) });
   }
   
   async function fetchMovieList(tmdbEndpoint: string, env: Env): Promise<Response> {

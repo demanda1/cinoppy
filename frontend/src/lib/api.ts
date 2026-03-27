@@ -2,6 +2,19 @@ const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8787";
 
 // --- Types ---
 
+export interface Multi {
+  id: number;
+  title: string;
+  poster_url: string | null;
+  release_year: number | null;
+  genres: string | string[];
+  director?: string;
+  lead_actors?: string | string[];
+  tmdb_rating: number;
+  overview?: string;
+  type: string;
+}
+
 export interface Movie {
   id: number;
   title: string;
@@ -204,6 +217,11 @@ export async function getHomePage(): Promise<HomePageData> {
 }
 
 // --- Movie List APIs ---
+
+export async function searchMulti(query: string): Promise<Multi[]> {
+  const data = await apiFetch(`/api/multi/search?q=${encodeURIComponent(query)}`);
+  return data.results;
+}
 
 export async function searchMovies(query: string): Promise<Movie[]> {
   const data = await apiFetch(`/api/movies/search?q=${encodeURIComponent(query)}`);

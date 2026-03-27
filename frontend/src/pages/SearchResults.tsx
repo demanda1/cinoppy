@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { searchMovies } from "@/lib/api";
-import type { Movie } from "@/lib/api";
+import { searchMulti } from "@/lib/api";
+import type { Multi, TVShow } from "@/lib/api";
 import MovieCard from "@/components/MovieCard";
+import TVCard from "@/components/TVCard";
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
 
-  const [results, setResults] = useState<Movie[]>([]);
+  const [results, setResults] = useState<Multi[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,7 +20,7 @@ export default function SearchResults() {
       try {
         setLoading(true);
         setError(null);
-        const movies = await searchMovies(query);
+        const movies = await searchMulti(query);
         setResults(movies);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Search failed");
@@ -64,7 +65,8 @@ export default function SearchResults() {
       {!loading && !error && results.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {results.map((movie) => (
-            <MovieCard key={movie.id} movie={movie} />
+            movie.type=="tv"?<TVCard show={movie as TVShow}/>:
+            <MovieCard key={movie.id} movie={movie}/>
           ))}
         </div>
       )}

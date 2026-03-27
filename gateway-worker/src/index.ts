@@ -38,6 +38,7 @@ export default {
         response = await forwardToWorker(env.AI_WORKER, request, path, url.search);
 
       } else if (
+		path.startsWith("/api/multi") ||
         path.startsWith("/api/movies") ||
         path.startsWith("/api/watchlist") ||
         path.startsWith("/api/tv") ||

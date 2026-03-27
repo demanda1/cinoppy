@@ -31,7 +31,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
         <form onSubmit={handleSearch} className="flex flex-1 max-w-md gap-2">
           <Input
             type="text"
-            placeholder="Search movies..."
+            placeholder="Search movies or tv series..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="h-9 bg-secondary/50 border-border/50 placeholder:text-muted-foreground/50 focus-visible:ring-cinoppy-purple/50"

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs } from "@/lib/api";
-import type { Review, TVShow } from "@/lib/api";
+import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders } from "@/lib/api";
+import type { Review, TVShow, Provider } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ export default function TvDetail() {
   const [streamPitchError, setStreamPitchError] = useState("");
   const [searchResults, setSearchResults] = useState<TVShow[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [providers, setProviders] = useState<Provider[]>([]);
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
@@ -71,6 +72,9 @@ export default function TvDetail() {
         setTvLoading(true);
         const data = await getTvDetails(tvId);
         setTv(data);
+        getTVProviders(tvId)
+          .then((p) => setProviders(p.slice(0, 6)))
+          .catch(() => {});
       } catch (err) {
         setTvError(err instanceof Error ? err.message : "Failed to load movie");
         setTvLoading(false);
@@ -215,6 +219,24 @@ export default function TvDetail() {
               <span className="text-sm text-muted-foreground">TMDB rating</span>
             </div>
           )}
+
+          {/* Streaming providers */}
+          {providers.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1 rounded-full bg-cinoppy-purple" />
+                <h2 className="text-lg font-semibold">Where to stream (India)</h2>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                {providers.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:border-cinoppy-purple/30 transition-colors">
+                    {p.logo_path && <img src={p.logo_path} alt={p.name} className="w-6 h-6 rounded" />}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
 
           {/* AI Pitch */}
           <div className="pitch-card rounded-xl p-5">

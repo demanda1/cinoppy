@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { getHomePage, getMovieProviders } from "@/lib/api";
-import type { HomePageData, Movie, TVShow, Provider } from "@/lib/api";
+import { getHomePage } from "@/lib/api";
+import type { HomePageData, Movie, TVShow } from "@/lib/api";
 import MovieCard from "@/components/MovieCard";
 import TVCard from "@/components/TVCard";
 
@@ -48,7 +48,6 @@ function ScrollRow({ title, accentColor, children }: ScrollRowProps) {
 
 export default function Home() {
   const [data, setData] = useState<HomePageData | null>(null);
-  const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,11 +58,7 @@ export default function Home() {
         // One single API call for all movie/TV sections
         const homeData = await getHomePage();
         setData(homeData);
-
-        // Providers loaded separately (less critical)
-        getMovieProviders()
-          .then((p) => setProviders(p.slice(0, 12)))
-          .catch(() => {});
+        
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load");
       } finally {
@@ -107,11 +102,11 @@ export default function Home() {
           Cinoppy
         </h1>
         <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
-          Discover movies with AI-powered spoiler-free pitches
-          that actually make you want to hit play.
+          Discover movies, tv series and more,
+          with AI recommendations and pitches that actually make you want to hit play.
         </p>
         <div className="flex justify-center gap-2 pt-2">
-          <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-purple/10 text-cinoppy-purple border border-cinoppy-purple/20">AI Pitches</span>
+          <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-purple/10 text-cinoppy-purple border border-cinoppy-purple/20">AI Pitches & recommendations</span>
           <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-pink/10 text-cinoppy-pink border border-cinoppy-pink/20">No Spoilers</span>
           <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-blue/10 text-cinoppy-blue border border-cinoppy-blue/20">Community Reviews</span>
         </div>
@@ -149,24 +144,6 @@ export default function Home() {
           {renderMovieRow("Top rated movies", "#10b981", data.top_rated)}
           {renderTVRow("Popular TV shows", "#06b6d4", data.popular_tv)}
           {renderTVRow("Top rated TV shows", "#ec4899", data.top_rated_tv)}
-
-          {/* Streaming providers */}
-          {providers.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="h-6 w-1 rounded-full bg-cinoppy-purple" />
-                <h2 className="text-lg font-semibold">Where to stream (India)</h2>
-              </div>
-              <div className="flex flex-wrap gap-4">
-                {providers.map((p) => (
-                  <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border/30 hover:border-cinoppy-purple/30 transition-colors">
-                    {p.logo_url && <img src={p.logo_url} alt={p.name} className="w-6 h-6 rounded" />}
-                    <span className="text-sm text-muted-foreground">{p.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 

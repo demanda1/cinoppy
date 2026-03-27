@@ -34,7 +34,7 @@ export interface Content {
 export interface Provider {
   id: number;
   name: string;
-  logo_url: string | null;
+  logo_path: string | null;
 }
 
 export interface Pitch {
@@ -264,13 +264,13 @@ export async function getTopRatedTV(): Promise<TVShow[]> {
 
 // --- Provider APIs ---
 
-export async function getMovieProviders(): Promise<Provider[]> {
-  const data = await apiFetch("/api/providers/movie");
+export async function getMovieProviders(movieId: number): Promise<Provider[]> {
+  const data = await apiFetch(`/api/movies/${movieId}/providers`);
   return data.results;
 }
 
-export async function getTVProviders(): Promise<Provider[]> {
-  const data = await apiFetch("/api/providers/tv");
+export async function getTVProviders(tvId: number): Promise<Provider[]> {
+  const data = await apiFetch(`/api/tv/${tvId}/providers`);
   return data.results;
 }
 

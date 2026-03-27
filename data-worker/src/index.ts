@@ -25,6 +25,12 @@ export interface Env {
 	vote_average: number;
 	overview: string;
   }
+
+  interface TMDBProviders {
+	provider_id: number;
+	provider_name: string;
+	logo_path: string | null;
+  }
   
   const MOVIE_GENRE_MAP: Record<number, string> = {
 	28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy",
@@ -115,12 +121,18 @@ export interface Env {
 		// STREAMING PROVIDER ENDPOINTS
 		// ============================================
   
-		if (path === "/api/providers/movie" && method === "GET") {
-		  return await fetchProviders("/watch/providers/movie", env);
+		const movieProviderMatch = path.match(/^\/api\/movies\/(\d+)\/providers$/);
+		if (movieProviderMatch && method === "GET") {
+		  const movieId = parseInt(movieProviderMatch[1]);
+		  const providerUrl = `/movie/${movieId}/watch/providers`
+		  return await fetchProviders(providerUrl, env);
 		}
-  
-		if (path === "/api/providers/tv" && method === "GET") {
-		  return await fetchProviders("/watch/providers/tv", env);
+
+		const tvProviderMatch = path.match(/^\/api\/tv\/(\d+)\/providers$/);
+		if (tvProviderMatch && method === "GET") {
+		  const tvId = parseInt(tvProviderMatch[1]);
+		  const providerUrl = `/tv/${tvId}/watch/providers`
+		  return await fetchProviders(providerUrl, env);
 		}
   
 		// ============================================
@@ -134,7 +146,7 @@ export interface Env {
 		}
 
 		// ============================================
-		// MOVIE DETAIL
+		// TV DETAIL
 		// ============================================
   
 		const tvDetailMatch = path.match(/^\/api\/tv\/(\d+)$/);
@@ -242,6 +254,30 @@ export interface Env {
 	  tmdb_rating: s.vote_average,
 	}));
   }
+
+  function formatProviders(data: any): any[] {
+	// 1. Get the India (IN) results object
+	const indiaResults = data?.results?.IN;
+
+	if (!indiaResults) return [];
+	// 2. Define the categories you want to check
+	const categories = ['rent', 'buy', 'flatrate', 'free'];
+
+	// 3. Extract and Merge all provider arrays into one
+	const allProviders = categories
+	.flatMap(type => indiaResults[type] || []); // Combines arrays and handles missing keys
+
+	// 4. Use a Map to keep only unique providers by ID
+	const uniqueProviders = Array.from(
+		new Map(allProviders.map(p => [p.provider_id, p])).values()
+  	);
+
+	return uniqueProviders.map((p: TMDBProviders) => ({
+	  id: p.provider_id,
+	  name: p.provider_name,
+	  logo_path: p.logo_path ? `${TMDB_IMG_BASE}${p.logo_path}` : null,
+	}));
+  }
   
   async function fetchMovieList(tmdbEndpoint: string, env: Env): Promise<Response> {
 	const data = await tmdbFetch(tmdbEndpoint, env);
@@ -254,13 +290,8 @@ export interface Env {
   }
   
   async function fetchProviders(tmdbEndpoint: string, env: Env): Promise<Response> {
-	const data = await tmdbFetch(`${tmdbEndpoint}?language=en-US&watch_region=IN`, env);
-	const providers = data.results.map((p: any) => ({
-	  id: p.provider_id,
-	  name: p.provider_name,
-	  logo_url: p.logo_path ? `${TMDB_IMG_BASE}${p.logo_path}` : null,
-	}));
-	return Response.json({ results: providers });
+	const data = await tmdbFetch(tmdbEndpoint, env);
+	return Response.json({ results: formatProviders(data)});
   }
   
   

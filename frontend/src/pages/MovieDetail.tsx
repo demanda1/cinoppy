@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies, searchMovies } from "@/lib/api";
-import type { Movie, Review } from "@/lib/api";
+import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies, searchMovies, getMovieProviders } from "@/lib/api";
+import type { Movie, Review, Provider } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ export default function MovieDetail() {
   const [streamPitchError, setStreamPitchError] = useState("");
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [providers, setProviders] = useState<Provider[]>([]);
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
@@ -71,6 +72,9 @@ export default function MovieDetail() {
         setMovieLoading(true);
         const data = await getMovieDetails(movieId);
         setMovie(data);
+        getMovieProviders(movieId)
+          .then((p) => setProviders(p.slice(0, 6)))
+          .catch(() => {});
       } catch (err) {
         setMovieError(err instanceof Error ? err.message : "Failed to load movie");
         setMovieLoading(false);
@@ -213,6 +217,23 @@ export default function MovieDetail() {
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-cinoppy-amber">★ {movie.tmdb_rating.toFixed(1)}</span>
               <span className="text-sm text-muted-foreground">TMDB rating</span>
+            </div>
+          )}
+
+          {/* Streaming providers */}
+          {providers.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-1 rounded-full bg-cinoppy-purple" />
+                <h2 className="text-lg font-semibold">Where to stream (India)</h2>
+              </div>
+              <div className="flex flex-wrap gap-4">
+                {providers.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:border-cinoppy-purple/30 transition-colors">
+                    {p.logo_path && <img src={p.logo_path} alt={p.name} className="w-6 h-6 rounded" />}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

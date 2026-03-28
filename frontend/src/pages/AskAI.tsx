@@ -9,8 +9,8 @@ export default function AskAI() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
 
-  const [resultMovie, setResultMovie] = useState<Movie[]>([]);
-  const [resultTv, setResultTv] = useState<TVShow[]>([]);
+  const [_resultMovie, setResultMovie] = useState<Movie[]>([]);
+  const [_resultTv, setResultTv] = useState<TVShow[]>([]);
   const [results, setResultMulti] = useState<Multi[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

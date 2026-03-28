@@ -57,23 +57,23 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
             onChange={(e) => setQuery(e.target.value)}
             className="h-9 bg-secondary/50 border-border/50 placeholder:text-muted-foreground/50 focus-visible:ring-cinoppy-purple/50"
           />
-          <Button type="submit" size="sm" className="bg-cinoppy-purple hover:bg-cinoppy-purple/80 text-white">
+          <Button type="submit" size="lg" className="bg-cinoppy-purple hover:bg-cinoppy-purple/80 text-white">
             Search
           </Button>
           <Button
             type="button"
-            size="sm"
+            size="lg"
             onClick={() => setAiOpen(true)}
             className="bg-gradient-to-r from-cinoppy-purple to-cinoppy-pink hover:from-cinoppy-purple/80 hover:to-cinoppy-pink/80 text-white gap-1"
           >
+            Ask Cinoppy AI
             <Sparkles className="size-3.5" />
-            AI
           </Button>
         </form>
 
         <div className="flex items-center gap-3">
           <Link to="/">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+            <Button variant="ghost" size="lg" className="text-muted-foreground hover:text-foreground">
               Home
             </Button>
           </Link>
@@ -97,10 +97,10 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gradient">
               <Sparkles className="size-5 text-cinoppy-purple" />
-              Ask AI
+              Ask Cinoppy AI
             </DialogTitle>
             <DialogDescription>
-              Ask anything about movies or TV shows and let AI find the answer.
+              Ask anything about movies or TV shows and let Cinoppy AI find the answer.
             </DialogDescription>
           </DialogHeader>
           <Textarea
@@ -120,7 +120,7 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
             className="w-full bg-gradient-to-r from-cinoppy-purple to-cinoppy-pink hover:from-cinoppy-purple/80 hover:to-cinoppy-pink/80 text-white"
           >
             <Sparkles className="size-4 mr-1" />
-            Ask AI
+            Ask Cinoppy AI
           </Button>
         </DialogContent>
       </Dialog>

@@ -2,6 +2,15 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Sparkles } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface NavbarProps {
   user: { display_name: string; is_anonymous: boolean } | null;
@@ -10,7 +19,19 @@ interface NavbarProps {
 
 export default function Navbar({ user, onLogout }: NavbarProps) {
   const [query, setQuery] = useState("");
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
   const navigate = useNavigate();
+
+  function handleAskAI() {
+    let trimmed = aiQuery.trim();
+    if (trimmed) {
+      setAiOpen(false);
+      trimmed = "Suggest something like: "+trimmed;
+      navigate(`/ask-ai?q=${encodeURIComponent(trimmed)}`);
+      setAiQuery("");
+    }
+  }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +60,15 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
           <Button type="submit" size="sm" className="bg-cinoppy-purple hover:bg-cinoppy-purple/80 text-white">
             Search
           </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setAiOpen(true)}
+            className="bg-gradient-to-r from-cinoppy-purple to-cinoppy-pink hover:from-cinoppy-purple/80 hover:to-cinoppy-pink/80 text-white gap-1"
+          >
+            <Sparkles className="size-3.5" />
+            AI
+          </Button>
         </form>
 
         <div className="flex items-center gap-3">
@@ -62,6 +92,38 @@ export default function Navbar({ user, onLogout }: NavbarProps) {
           ) : null}
         </div>
       </div>
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent className="sm:max-w-md bg-card border-border/50">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gradient">
+              <Sparkles className="size-5 text-cinoppy-purple" />
+              Ask AI
+            </DialogTitle>
+            <DialogDescription>
+              Ask anything about movies or TV shows and let AI find the answer.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="e.g. Suggest me a thriller movie like Inception..."
+            value={aiQuery}
+            onChange={(e) => setAiQuery(e.target.value)}
+            className="min-h-24 bg-secondary/50 border-border/50 placeholder:text-muted-foreground/50 focus-visible:ring-cinoppy-purple/50"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleAskAI();
+              }
+            }}
+          />
+          <Button
+            onClick={handleAskAI}
+            className="w-full bg-gradient-to-r from-cinoppy-purple to-cinoppy-pink hover:from-cinoppy-purple/80 hover:to-cinoppy-pink/80 text-white"
+          >
+            <Sparkles className="size-4 mr-1" />
+            Ask AI
+          </Button>
+        </DialogContent>
+      </Dialog>
     </nav>
   );
 }

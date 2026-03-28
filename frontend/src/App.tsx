@@ -5,6 +5,7 @@ import Home from "@/pages/Home";
 import SearchResults from "@/pages/SearchResults";
 import MovieDetail from "@/pages/MovieDetail";
 import TvDetail from "@/pages/TvDetail";
+import AskAI from "@/pages/AskAI";
 import { getCurrentUser, logOut, onAuthChange } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/search" element={<SearchResults />} />
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/tv/:id" element={<TvDetail />} />
+          <Route path="/ask-ai" element={<AskAI />} />
           {/* We'll add these in the next steps: */}
           {/* <Route path="/watchlist" element={<Watchlist />} /> */}
         </Routes>

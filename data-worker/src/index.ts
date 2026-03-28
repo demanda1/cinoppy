@@ -253,15 +253,25 @@ export interface Env {
   }
 
   function formatMulti(data: any): any[] {
-	return data.results.slice(0, 20).map((m: TMDBMulti) => ({
-	  id: m.id,
+	return data.results.slice(0, 20).filter((m: any)=> m.media_type === "movie" || m.media_type === "tv")
+	.map((m: any) => {
+		// 2. Handle the Title difference (Movie = title, TV = name)
+      const title = m.title || m.name || "Unknown Title";
+
+      // 3. Handle the Date difference (Movie = release_date, TV = first_air_date)
+      const dateStr = m.release_date || m.first_air_date;
+      const release_year = (dateStr && dateStr.length >= 4) 
+        ? parseInt(dateStr.substring(0, 4)) 
+        : null;
+
+	  return {id: m.id,
 	  title: m.title,
 	  poster_url: m.poster_path ? `${TMDB_IMG_BASE}${m.poster_path}` : null,
-	  release_year: m.release_date ? parseInt(m.release_date.substring(0, 4)) : null,
-	  genres: m.genre_ids.map((id: number) => MOVIE_GENRE_MAP[id] || "Unknown"),
+	  release_year: release_year,
+	  genres: (m.genre_ids || []).map((id: number) => MOVIE_GENRE_MAP[id] || "Unknown"),
 	  tmdb_rating: m.vote_average,
-	  type: m.media_type
-	}));
+	  type: m.media_type }
+	});
   }
   
   function formatMovies(data: any): any[] {

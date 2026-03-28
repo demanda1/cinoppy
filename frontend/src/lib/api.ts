@@ -5,38 +5,45 @@ const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8787";
 export interface Multi {
   id: number;
   title: string;
-  poster_url: string | null;
-  release_year: number | null;
-  genres: string | string[];
-  director?: string;
+  poster_url?: string | null;
+  release_year?: number | null;
+  genres?: string | string[];
+  director?: string | string[];
   lead_actors?: string | string[];
-  tmdb_rating: number;
-  overview?: string;
+  tmdb_rating: number | 5;
+  overview?: string | string[];
+  type?: string | string[];
+}
+
+export interface AISearchResponse {
+  title: string;
   type: string;
+  error?: number | null;
+  raw?: string | string[];
 }
 
 export interface Movie {
   id: number;
   title: string;
-  poster_url: string | null;
-  release_year: number | null;
-  genres: string | string[];
-  director?: string;
+  poster_url?: string | null;
+  release_year?: number | null;
+  genres?: string | string[];
+  director?: string | string[];
   lead_actors?: string | string[];
-  tmdb_rating: number;
-  overview?: string;
+  tmdb_rating: number | 0;
+  overview?: string | string[];
 }
 
 export interface TVShow {
   id: number;
   title: string;
-  poster_url: string | null;
-  release_year: number | null;
-  genres: string | string[];
-  director?: string;
+  poster_url?: string | null;
+  release_year?: number | null;
+  genres?: string | string[];
+  director?: string | string[];
   lead_actors?: string | string[];
-  tmdb_rating: number;
-  overview?: string;
+  tmdb_rating: number | 5;
+  overview?: string | string[];
 }
 
 export interface Content {
@@ -217,6 +224,14 @@ export async function getHomePage(): Promise<HomePageData> {
 }
 
 // --- Movie List APIs ---
+
+export async function searchAI(query: string): Promise<AISearchResponse[]> {
+  const data = await apiFetch("/api/ai/search", {
+    method: "POST",
+    body: JSON.stringify({ query: query }),
+  });
+  return data.searched;
+}
 
 export async function searchMulti(query: string): Promise<Multi[]> {
   const data = await apiFetch(`/api/multi/search?q=${encodeURIComponent(query)}`);

@@ -22,6 +22,12 @@ export default {
     const path = url.pathname;
 
     try {
+      // --- AI Search ---
+      if (path === "/api/ai/search" && request.method === "POST") {
+        const body = await request.json() as { query: string };
+        return await searchContent(body.query, env);
+      }
+
       // --- AI Pitch ---
       const pitchMatch = path.match(/^\/api\/movies\/(\d+)\/pitch$/);
       if (pitchMatch && request.method === "GET") {
@@ -79,6 +85,104 @@ export default {
     }
   },
 };
+
+/**
+ * Cleans a string by removing all characters except:
+ * - Alphabets (a-z, A-Z)
+ * - Numbers (0-9)
+ * - Spaces
+ * - Commas (,)
+ * - Full stops (.)
+ */
+const cleanSentence = (input: string): string => {
+  // Regex Breakdown:
+  // [^ ...] -> Match anything NOT inside these brackets
+  // a-zA-Z  -> Allow all letters
+  // 0-9     -> Allow all numbers
+  // \s      -> Allow whitespace (spaces, tabs, newlines)
+  // ,\.     -> Allow commas and escaped full stops
+  // /g      -> Global flag (replace all instances, not just the first)
+  
+  return input.replace(/[^a-zA-Z0-9\s,\.]/g, "").trim();
+};
+
+// ============================================
+// AI SEARCH
+// ============================================
+
+async function searchContent(query: string, env: Env): Promise<Response> {
+  // 1. You presumably fetch the movie/tv title here to build the prompt.
+  let data = cleanSentence(query);
+  if(data===null){
+    return Response.json({
+      error: "please provide more context",
+    }, { status: 500 });
+  } 
+  const prompt = buildSearchPrompt(data);
+  let responseText: string | null = null;
+  
+  try {
+    responseText = await callGemini(prompt, env, "geminiModel4");
+  } catch {
+    try {
+      responseText = await callGemini(prompt, env, "geminiModel1");
+    } catch {
+      try {
+        responseText = await callGemini(prompt, env, "geminiModel5");
+      } catch {
+        return Response.json({ error: "Both AI providers failed" }, { status: 503 });
+      }
+    }
+  }
+
+  if (!responseText) {
+    return Response.json({
+      error: "AI couldn't find the appropriate response",
+      raw: responseText,
+    }, { status: 500 });
+  }
+
+  // Parse the JSON from AI response
+  try {
+    // Clean up: remove markdown code blocks, extra text before/after JSON
+    let cleaned = responseText.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    
+    // Find the JSON array in the response (starts with [ and ends with ])
+    const startIndex = cleaned.indexOf("[");
+    const endIndex = cleaned.lastIndexOf("]");
+    
+    if (startIndex === -1 || endIndex === -1) {
+      return Response.json({
+        error: "AI couldn't find the appropriate response",
+        raw: responseText,
+      }, { status: 500 });
+    }
+    
+    cleaned = cleaned.substring(startIndex, endIndex + 1);
+    let searched = JSON.parse(cleaned);
+    // FIX: If the AI returned [[{movie}, {movie}]], turn it into [{movie}, {movie}]
+    if (Array.isArray(searched) && Array.isArray(searched[0])) {
+        console.log("Detected nested array, flattening...");
+        searched = searched.flat();
+    }
+
+    // Double check: If it's still not an array (or empty), throw error
+    if (!Array.isArray(searched)) {
+      return Response.json({
+        error: "AI couldn't find the appropriate response",
+        raw: responseText,
+      }, { status: 500 });
+  }
+
+    return Response.json({ searched });
+  } catch {
+    // If parsing fails, try to extract movie suggestions manually
+    return Response.json({
+      error: "AI returned invalid format",
+      raw: responseText,
+    }, { status: 500 });
+  }
+}
 
 
 // ============================================
@@ -212,6 +316,21 @@ async function generatePitch(movieId: number, env: Env, type:String): Promise<Re
     pitch: storedPitch[0] || { movie_id: movieId, pitch_text: pitchText, model_used: modelUsed },
     source: modelUsed,
   });
+}
+
+function buildSearchPrompt(query:String): string {
+
+  return `"Role: You are a movie expert and recommendation engine.
+  \nTask: Analyze the user query and return a JSON array containing few movies or TV shows title.\n
+  \nRules:\n1. RECOMMENDATION: If the query asks for \"something like [Title]\" or \"movies similar to [Title]\" or \"[Title]\", 
+  then SUGGEST 5 MOVIES/TVSERIES which are RELATED to the [Title] by SAME DIRECTOR, ACTOR or GENRE. 
+  If [Title] is INDIAN MOVIE/TVSERIES  then suggest ONLY indian movie/tvseries.
+  \n2CONTEXTUAL: If no title is mentioned, perform sentiment/theme analysis (e.g., \"space travel\") then suggest the best match.
+  \n4. FORMAT: Return ONLY a JSON array. NO CONVERSATIONAL TEXT.\n
+  \nExamples:\n- Query: \"Interstellar\" -> [{\"title\": \"Interstellar\", \"type\": \"movie\"}]
+  \n- Query: \"Something like Harry Potter\" -> [{\"title\": \"Percy Jackson\", \"type\": \"movie\"}, {\"title\": \"The Rings of power\", \"type\": \"tv\"} ]
+  \n- Query: \"Time travel mystery series\" -> [{\"title\": \"Dark\", \"type\": \"tv\"}]\n- Query: \"Anurag Kashyap\" -> [{\"title\": \"Gangs of wasseypur\", \"type\": \"movie\"}]\n
+  \nQuery: \"${query}\""`;
 }
 
 function buildPitchPrompt(movie: any, type:String): string {

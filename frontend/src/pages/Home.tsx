@@ -133,17 +133,6 @@ export default function Home() {
         </div>
       )}
 
-<iframe
-  width="315"
-  height="560"
-  src="https://www.youtube.com/embed/pVRefGmQDJM" // Ensure it's /embed/
-  title="YouTube Shorts"
-  frameBorder="0"
-  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-  allowFullScreen
-  referrerPolicy="strict-origin-when-cross-origin" // Add this line
-></iframe>
-
       {/* All sections from single API call */}
       {data && (
         <div className="space-y-10">

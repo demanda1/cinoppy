@@ -45,7 +45,6 @@ export default function CompareModal({ contentId, contentTitle, type, onClose }:
     setSearchResults([]);
     try {
 
-      let results=null;
       if(type=="movie"){
         console.log("comparing movies");
         await getMovieDetails(otherMovieId);

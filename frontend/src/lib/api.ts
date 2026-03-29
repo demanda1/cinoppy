@@ -77,6 +77,13 @@ export interface Pitch {
   created_at?: string;
 }
 
+export interface Trailer {
+  id: string;
+  title: string;
+  poster_url: string;
+  release_year: string;
+}
+
 export interface Review {
   id: string;
   user_id: string;
@@ -236,6 +243,11 @@ export async function searchAI(query: string): Promise<AISearchResponse[]> {
     body: JSON.stringify({ query: query }),
   });
   return data.searched;
+}
+
+export async function searchTrailer(query: string): Promise<Trailer> {
+  const data = await apiFetch(`/api/trailer/search?q=${encodeURIComponent(query)}`);
+  return data.results[0];
 }
 
 export async function searchMulti(query: string): Promise<Multi[]> {

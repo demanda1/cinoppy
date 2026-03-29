@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies, searchMovies, getMovieProviders } from "@/lib/api";
-import type { Movie, Review, Provider } from "@/lib/api";
+import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies, searchMovies, getMovieProviders, searchTrailer } from "@/lib/api";
+import type { Movie, Review, Provider, Trailer } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";
 import MovieCard from "@/components/MovieCard";
+import YoutubePlayer from "@/components/YoutubePlayer";
 
 export default function MovieDetail() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,7 @@ export default function MovieDetail() {
   const [searchResults, setSearchResults] = useState<Movie[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [trailer, setTrailer] = useState<Trailer | null>(null);
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
@@ -65,6 +67,7 @@ export default function MovieDetail() {
     if (!movieId) return;
     // Reset states when movie changes
     setSearchResults([]);
+    setTrailer(null);
     const abortController = new AbortController();
 
     async function fetchAll() {
@@ -75,6 +78,8 @@ export default function MovieDetail() {
         getMovieProviders(movieId)
           .then((p) => setProviders(p.slice(0, 6)))
           .catch(() => {});
+        const trailerData= await searchTrailer(data.title);
+        setTrailer(trailerData);
       } catch (err) {
         setMovieError(err instanceof Error ? err.message : "Failed to load movie");
         setMovieLoading(false);
@@ -236,6 +241,14 @@ export default function MovieDetail() {
               </div>
             </div>
           )}
+
+          {/* Youtube Modal */}
+
+          {trailer && ( 
+            <YoutubePlayer videoId={trailer?.id} 
+            posterUrl={trailer?.poster_url} 
+            title={trailer?.title}  /> )}
+
 
           {/* AI Pitch */}
           <div className="pitch-card rounded-xl p-5">

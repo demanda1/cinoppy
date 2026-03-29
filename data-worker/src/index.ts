@@ -3,6 +3,7 @@ export interface Env {
 	SUPABASE_PUBLISHABLE_KEY: string;
 	SUPABASE_SECRET_KEY: string;
 	TMDB_API_READ_TOKEN: string;
+	YOUTUBE_APIKEY: string;
 	ENVIRONMENT: string;
   }
 
@@ -60,6 +61,7 @@ export interface Env {
   
   const TMDB_BASE = "https://api.themoviedb.org/3";
   const TMDB_IMG_BASE = "https://image.tmdb.org/t/p/w500";
+  const YOUTUBE_BASE = "https://www.googleapis.com";
   
   export default {
 	async fetch(request: Request, env: Env): Promise<Response> {
@@ -173,6 +175,19 @@ export interface Env {
 		  const tvId = parseInt(tvDetailMatch[1]);
 		  return await getTvDetails(tvId, env);
 		}
+
+		// ============================================
+		// YOUTUBE TRAILER
+		// ============================================
+
+		if (path === "/api/trailer/search" && method === "GET") {
+			const query = url.searchParams.get("q");
+			if (!query) {
+			  return Response.json({ error: "Missing search query ?q=" }, { status: 400 });
+			}
+			return await fetchTrailerDetails(`/youtube/v3/search?`, query, env);
+		  }
+  
   
 		// ============================================
 		// REVIEWS
@@ -233,6 +248,31 @@ export interface Env {
 	  }
 	},
   };
+
+  // ============================================
+  // YOUTUBE HELPERS
+  // ============================================
+  
+  async function youtubeFetch(endpoint: string, title:string, env: Env): Promise<any> {
+	const params = new URLSearchParams({
+		part: "snippet",
+		q:title+" official trailer",
+		type:"video",
+		videoEmbeddable: "true",
+		maxResults:"1",
+		key:env.YOUTUBE_APIKEY
+  });
+	const res = await fetch(`${YOUTUBE_BASE}${endpoint}${params.toString()}`, {
+	  headers: {
+		"Accept": "application/json",
+		"Content-Type": "application/json",
+	  },
+	});
+	if (!res.ok) {
+	  throw new Error(`YOUTUBE API error: ${res.status} ${res.statusText}`);
+	}
+	return res.json();
+  }
   
   
   // ============================================
@@ -250,6 +290,25 @@ export interface Env {
 	  throw new Error(`TMDB API error: ${res.status} ${res.statusText}`);
 	}
 	return res.json();
+  }
+
+  function formatTrailer(data: any): any[] {
+	if (data.items.length==0){
+		return [];
+	} else {
+		return data.items.map((t:any)=>{
+			const videoId = t.id.videoId;
+			const title = t.snippet.title;
+			const thumbnail = t.snippet.thumbnails.high.url;
+			const date = t.snippet.publishedAt ? t.snippet.publishedAt.substring(0, 10) : null
+
+			return {id: videoId,
+				title: title,
+				poster_url: thumbnail,
+				release_year: date}
+
+		})
+	}
   }
 
   function formatMulti(data: any): any[] {
@@ -318,6 +377,11 @@ export interface Env {
 	  name: p.provider_name,
 	  logo_path: p.logo_path ? `${TMDB_IMG_BASE}${p.logo_path}` : null,
 	}));
+  }
+
+  async function fetchTrailerDetails(youtubeEndpoint: string, title: string, env: Env): Promise<Response> {
+	const data = await youtubeFetch(youtubeEndpoint, title, env);
+	return Response.json({ results: formatTrailer(data) });
   }
 
   async function fetchMultiList(tmdbEndpoint: string, env: Env): Promise<Response> {

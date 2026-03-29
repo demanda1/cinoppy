@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders } from "@/lib/api";
-import type { Review, TVShow, Provider } from "@/lib/api";
+import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders, searchTrailer } from "@/lib/api";
+import type { Review, TVShow, Provider, Trailer } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";
 import TVCard from "@/components/TVCard";
+import YoutubePlayer from "@/components/YoutubePlayer";
 
 export default function TvDetail() {
   const { id } = useParams<{ id: string }>();
@@ -27,6 +28,7 @@ export default function TvDetail() {
   const [searchResults, setSearchResults] = useState<TVShow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [trailer, setTrailer] = useState<Trailer | null>(null);
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
@@ -65,6 +67,7 @@ export default function TvDetail() {
     if (!tvId) return;
     // Reset states when movie changes
     setSearchResults([]);
+    setTrailer(null);
     const abortController = new AbortController();
 
     async function fetchAll() {
@@ -75,6 +78,8 @@ export default function TvDetail() {
         getTVProviders(tvId)
           .then((p) => setProviders(p.slice(0, 6)))
           .catch(() => {});
+        const trailerData= await searchTrailer(data.title);
+        setTrailer(trailerData);
       } catch (err) {
         setTvError(err instanceof Error ? err.message : "Failed to load movie");
         setTvLoading(false);
@@ -236,6 +241,13 @@ export default function TvDetail() {
               </div>
             </div>
           )}
+
+          {/* Youtube Modal */}
+
+          {trailer && ( 
+            <YoutubePlayer videoId={trailer?.id} 
+            posterUrl={trailer?.poster_url} 
+            title={trailer?.title}  /> )}
 
 
           {/* AI Pitch */}

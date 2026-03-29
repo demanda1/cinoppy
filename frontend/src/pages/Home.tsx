@@ -93,7 +93,6 @@ export default function Home() {
       </ScrollRow>
     );
   }
-
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       {/* Hero */}
@@ -134,16 +133,27 @@ export default function Home() {
         </div>
       )}
 
+<iframe
+  width="315"
+  height="560"
+  src="https://www.youtube.com/embed/pVRefGmQDJM" // Ensure it's /embed/
+  title="YouTube Shorts"
+  frameBorder="0"
+  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  allowFullScreen
+  referrerPolicy="strict-origin-when-cross-origin" // Add this line
+></iframe>
+
       {/* All sections from single API call */}
       {data && (
         <div className="space-y-10">
           {renderMovieRow("Trending this week", "#ec4899", data.trending)}
           {renderMovieRow("Now playing in theatres", "#a855f7", data.now_playing)}
-          {renderMovieRow("Popular movies", "#3b82f6", data.popular)}
-          {renderMovieRow("Upcoming movies", "#f59e0b", data.upcoming)}
           {renderMovieRow("Top rated movies", "#10b981", data.top_rated)}
           {renderTVRow("Popular TV shows", "#06b6d4", data.popular_tv)}
           {renderTVRow("Top rated TV shows", "#ec4899", data.top_rated_tv)}
+          {renderMovieRow("Popular movies", "#3b82f6", data.popular)}
+          {renderMovieRow("Upcoming movies", "#f59e0b", data.upcoming)}
         </div>
       )}
 

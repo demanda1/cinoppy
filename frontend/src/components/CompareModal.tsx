@@ -1,21 +1,22 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { searchMovies, compareMovies, getMovieDetails } from "@/lib/api";
-import type { Movie, MovieComparison } from "@/lib/api";
+import { searchMovies, compareContent, getMovieDetails, getTvDetails, searchTvs } from "@/lib/api";
+import type { Content, Comparison } from "@/lib/api";
 
 interface CompareModalProps {
-  movieId: number;
-  movieTitle: string;
+  contentId: number;
+  contentTitle: string;
+  type: string;
   onClose: () => void;
 }
 
-export default function CompareModal({ movieId, movieTitle, onClose }: CompareModalProps) {
+export default function CompareModal({ contentId, contentTitle, type, onClose }: CompareModalProps) {
   const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Movie[]>([]);
+  const [searchResults, setSearchResults] = useState<Content[]>([]);
   const [searching, setSearching] = useState(false);
   const [comparing, setComparing] = useState(false);
-  const [result, setResult] = useState<{ movie1: string; movie2: string; comparison: MovieComparison } | null>(null);
+  const [result, setResult] = useState<{ content1: string; content2: string; comparison: Comparison } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSearch() {
@@ -23,21 +24,36 @@ export default function CompareModal({ movieId, movieTitle, onClose }: CompareMo
     setSearching(true);
     setError(null);
     try {
-      const results = await searchMovies(query);
-      setSearchResults(results.filter((m) => m.id !== movieId).slice(0, 5));
+      let results=null;
+      if(type=="movie"){
+        console.log("searching movies");
+         results = await searchMovies(query);
+      } else {
+        console.log("searching tvs");
+         results = await searchTvs(query);
+      }
+      setSearchResults(results.filter((m) => m.id !== contentId).slice(0, 10));
     } catch {
       setError("Search failed");
     }
     setSearching(false);
   }
 
-  async function handleCompare(otherMovieId: number) {
+  async function handleCompare(otherMovieId: number, type: string) {
     setComparing(true);
     setError(null);
     setSearchResults([]);
     try {
-      await getMovieDetails(otherMovieId);
-      const data = await compareMovies(movieId, otherMovieId);
+
+      let results=null;
+      if(type=="movie"){
+        console.log("comparing movies");
+        await getMovieDetails(otherMovieId);
+      } else {
+        console.log("comparing tvs");
+        await getTvDetails(otherMovieId);
+      }      
+      const data = await compareContent(contentId, otherMovieId, type);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Comparison failed");
@@ -55,7 +71,7 @@ export default function CompareModal({ movieId, movieTitle, onClose }: CompareMo
         {/* Header */}
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">
-            Compare <span className="text-cinoppy-pink">{movieTitle}</span>
+            Compare <span className="text-cinoppy-pink">{contentTitle}</span>
           </h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">
             ×
@@ -68,8 +84,8 @@ export default function CompareModal({ movieId, movieTitle, onClose }: CompareMo
             {/* Movie names header */}
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="text-xs text-muted-foreground uppercase tracking-wider">Aspect</div>
-              <div className="text-sm font-semibold text-cinoppy-pink">{result.movie1}</div>
-              <div className="text-sm font-semibold text-cinoppy-blue">{result.movie2}</div>
+              <div className="text-sm font-semibold text-cinoppy-pink">{result.content1}</div>
+              <div className="text-sm font-semibold text-cinoppy-blue">{result.content2}</div>
             </div>
 
             {/* Comparison table */}
@@ -94,7 +110,7 @@ export default function CompareModal({ movieId, movieTitle, onClose }: CompareMo
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-cinoppy-pink/5 border border-cinoppy-pink/20 p-4">
                 <p className="text-xs font-semibold text-cinoppy-pink uppercase tracking-wider mb-2">
-                  Watch {result.movie1} if...
+                  Watch {result.content1} if...
                 </p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {result.comparison.watch_movie1_if}
@@ -102,7 +118,7 @@ export default function CompareModal({ movieId, movieTitle, onClose }: CompareMo
               </div>
               <div className="rounded-xl bg-cinoppy-blue/5 border border-cinoppy-blue/20 p-4">
                 <p className="text-xs font-semibold text-cinoppy-blue uppercase tracking-wider mb-2">
-                  Watch {result.movie2} if...
+                  Watch {result.content2} if...
                 </p>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   {result.comparison.watch_movie2_if}
@@ -111,30 +127,37 @@ export default function CompareModal({ movieId, movieTitle, onClose }: CompareMo
             </div>
 
             {/* Verdict */}
+            {result.comparison.verdict?(
             <div className="rounded-xl bg-cinoppy-purple/5 border border-cinoppy-purple/20 p-4 text-center">
               <p className="text-xs font-semibold text-cinoppy-purple uppercase tracking-wider mb-2">Verdict</p>
               <p className="text-sm text-foreground/90 leading-relaxed">{result.comparison.verdict}</p>
-            </div>
+            </div>):<></>}
 
             <Button
               variant="outline"
               className="w-full border-border/30"
               onClick={() => { setResult(null); setQuery(""); }}
             >
-              Compare with another movie
+              Compare with something else
             </Button>
           </div>
         ) : (
           <>
             {/* Search */}
             <div className="flex gap-2">
-              <Input
+              {type=="movie"?<Input
                 placeholder="Search for a movie to compare..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 className="bg-secondary/50 border-border/50 focus-visible:ring-cinoppy-pink/50"
-              />
+              />:<Input
+              placeholder="Search for a tv series to compare..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="bg-secondary/50 border-border/50 focus-visible:ring-cinoppy-pink/50"
+            />}
               <Button
                 onClick={handleSearch}
                 disabled={searching}
@@ -147,11 +170,11 @@ export default function CompareModal({ movieId, movieTitle, onClose }: CompareMo
             {/* Search results */}
             {searchResults.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">Pick a movie to compare:</p>
+                <p className="text-xs text-muted-foreground">Pick something to compare:</p>
                 {searchResults.map((m) => (
                   <div
                     key={m.id}
-                    onClick={() => handleCompare(m.id)}
+                    onClick={() => handleCompare(m.id, type)}
                     className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 border border-border/20 cursor-pointer hover:border-cinoppy-pink/30 transition-colors"
                   >
                     {m.poster_url && (
@@ -176,7 +199,7 @@ export default function CompareModal({ movieId, movieTitle, onClose }: CompareMo
                   <div className="h-4 bg-secondary animate-pulse rounded w-1/2 mx-auto" />
                   <div className="h-4 bg-secondary animate-pulse rounded w-2/3 mx-auto" />
                 </div>
-                <p className="text-xs text-muted-foreground">AI is comparing both movies point by point...</p>
+                <p className="text-xs text-muted-foreground">AI is comparing both point by point...</p>
               </div>
             )}
           </>

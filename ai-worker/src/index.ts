@@ -44,8 +44,8 @@ export default {
 
       // --- AI Movie Comparison ---
       if (path === "/api/ai/compare" && request.method === "POST") {
-        const body = await request.json() as { movie_id_1: number; movie_id_2: number };
-        return await compareContent(body.movie_id_1, body.movie_id_2, env, "movie");
+        const body = await request.json() as { content_id_1: number; content_id_2: number; type:string };
+        return await compareContent(body.content_id_1, body.content_id_2, env, body.type);
       }
 
       // --- AI Tv Pitch ---
@@ -60,12 +60,6 @@ export default {
       if (similarTvMatch && request.method === "GET") {
         const tvId = parseInt(similarTvMatch[1]);
         return await generateSimilar(tvId, env, "tv series");
-      }
-
-      // --- AI TV Comparison ---
-      if (path === "/api/ai/compare/tv" && request.method === "POST") {
-        const body = await request.json() as { tv_id_1: number; tv_id_2: number };
-        return await compareContent(body.tv_id_1, body.tv_id_2, env, "tv series");
       }
 
       // Health check
@@ -468,7 +462,7 @@ async function compareContent(id1: number, id2: number, env: Env, type: String):
   let data1: any[] = []; 
   let data2: any[] = []; 
   
-  if(type === "movie"){
+  if(type == "tv"){
     data1 = await supabaseGet(env, `/rest/v1/tv?id=eq.${id1}&select=*`);
     data2 = await supabaseGet(env, `/rest/v1/tv?id=eq.${id2}&select=*`);
   } else {
@@ -492,13 +486,13 @@ async function compareContent(id1: number, id2: number, env: Env, type: String):
 
   const prompt = `Compare these two ${type} point by point. Help someone decide which to watch.
 
-Movie 1: "${content1.title}" (${content1.release_year})
+${type}  1: "${content1.title}" (${content1.release_year})
 - Director: ${content1.director || "Unknown"}
 - Genres: ${genres1.join(", ")}
 - Actors: ${actors1.join(", ")}
 - TMDB Rating: ${content1.tmdb_rating}/10
 
-Movie 2: "${content2.title}" (${content2.release_year})
+${type}  2: "${content2.title}" (${content2.release_year})
 - Director: ${content2.director || "Unknown"}
 - Genres: ${genres2.join(", ")}
 - Actors: ${actors2.join(", ")}
@@ -509,13 +503,13 @@ Return ONLY a JSON object with no other text, no markdown, no code blocks.
 The JSON must have exactly these fields:
 - "points": an array of exactly 6 comparison objects, each with:
   - "aspect" (string): the category being compared (e.g. "Vibe", "Pacing", "Acting", "Visuals", "Emotional impact", "Rewatchability")
-  - "movie1" (string): short casual description for movie 1 (max 8 words)
-  - "movie2" (string): short casual description for movie 2 (max 8 words)
-- "watch_movie1_if" (string): One sentence — watch this if you want...
-- "watch_movie2_if" (string): One sentence — watch this if you want...
+  - "${type} 1 " (string): short casual description for ${type} 1  (max 8 words)
+  - "${type} 2" (string): short casual description for ${type}  2 (max 8 words)
+- "watch_${type}1_if" (string): One sentence — watch this if you want...
+- "watch_${type}2_if" (string): One sentence — watch this if you want...
 - "verdict" (string): One fun sentence picking a winner or saying it depends
 
-Choose 6 comparison aspects that best highlight the differences between THESE specific movies. Don't always use the same aspects — pick what matters most for this pair.
+Choose 6 comparison aspects that best highlight the differences between THESE specific ${type}. Don't always use the same aspects — pick what matters most for this pair.
 
 Example:
 {"points":[{"aspect":"Vibe","movie1":"Dark and cerebral","movie2":"Light and adventurous"},{"aspect":"Pacing","movie1":"Slow burn that rewards patience","movie2":"Non-stop action from minute one"},{"aspect":"Acting","movie1":"Oscar-worthy lead performance","movie2":"Fun ensemble chemistry"},{"aspect":"Visuals","movie1":"Stunning practical effects","movie2":"Vibrant colorful CGI world"},{"aspect":"Emotional impact","movie1":"Will make you question reality","movie2":"Pure feel-good entertainment"},{"aspect":"Best for","movie1":"A solo deep-dive night","movie2":"Movie night with friends"}],"watch_movie1_if":"You want a film that stays in your head for days.","watch_movie2_if":"You want two hours of pure fun without overthinking.","verdict":"Both are great but for completely different moods — pick based on your energy tonight."}

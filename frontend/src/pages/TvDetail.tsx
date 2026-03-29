@@ -283,8 +283,9 @@ export default function TvDetail() {
       {/* Compare Modal */}
       {showCompare && (
         <CompareModal
-          movieId={tvId}
-          movieTitle={tv.title}
+          contentId={tvId}
+          contentTitle={tv.title}
+          type="tv"
           onClose={() => setShowCompare(false)}
         />
       )}

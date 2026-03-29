@@ -420,10 +420,10 @@ export interface Env {
   
 	const data = await tmdbFetch(`/tv/${tvId}?language=en-US&append_to_response=credits`, env);
   
-	const director = data.created_by[0].name || "Unknown";
+	const director = data.created_by.length>0?data.created_by[0].name : "Unknown";
 
-	const leadActors = data.credits.cast.filter((c: any) => c.known_for_department === "Acting").map((c: any) => c.name);
-	const genres = data.genres.map((g: any) => g.name);
+	const leadActors = data.credits.length>0? data.credits.cast.filter((c: any) => c.known_for_department === "Acting").map((c: any) => c.name): ["unknown"];
+	const genres = data.genres.length>0?data.genres.map((g: any) => g.name): ["Unknown"];
   
 	const tv = {
 	  id: data.id,

@@ -22,6 +22,18 @@ export interface AISearchResponse {
   raw?: string | string[];
 }
 
+export interface Content {
+  id: number;
+  title: string;
+  poster_url?: string | null;
+  release_year?: number | null;
+  genres?: string | string[];
+  director?: string | string[];
+  lead_actors?: string | string[];
+  tmdb_rating: number | 0;
+  overview?: string | string[];
+}
+
 export interface Movie {
   id: number;
   title: string;
@@ -94,17 +106,10 @@ export interface ComparisonPoint {
   movie2: string;
 }
 
-export interface MovieComparison {
+export interface Comparison {
   points: ComparisonPoint[];
   watch_movie1_if: string;
   watch_movie2_if: string;
-  verdict: string;
-}
-
-export interface TvComparison {
-  points: ComparisonPoint[];
-  watch_tv1_if: string;
-  watch_tv2_if: string;
   verdict: string;
 }
 
@@ -238,7 +243,7 @@ export async function searchMulti(query: string): Promise<Multi[]> {
   return data.results;
 }
 
-export async function searchMovies(query: string): Promise<Movie[]> {
+export async function searchMovies(query: string): Promise<Content[]> {
   const data = await apiFetch(`/api/movies/search?q=${encodeURIComponent(query)}`);
   return data.results;
 }
@@ -275,7 +280,7 @@ export async function getMovieDetails(movieId: number): Promise<Movie> {
 
 // --- TV Show APIs ---
 
-export async function searchTvs(query: string): Promise<Movie[]> {
+export async function searchTvs(query: string): Promise<Content[]> {
   const data = await apiFetch(`/api/tv/search?q=${encodeURIComponent(query)}`);
   return data.results;
 }
@@ -347,13 +352,14 @@ export async function getSimilarTv(movieId: number): Promise<SimilarMovie[]> {
 
 // --- AI Movie Comparison ---
 
-export async function compareMovies(
-  movieId1: number,
-  movieId2: number
-): Promise<{ movie1: string; movie2: string; comparison: MovieComparison }> {
+export async function compareContent(
+  content_id_1: number,
+  content_id_2: number,
+  type: string
+): Promise<{ content1: string; content2: string; comparison: Comparison }> {
   const data = await apiFetch("/api/ai/compare", {
     method: "POST",
-    body: JSON.stringify({ movie_id_1: movieId1, movie_id_2: movieId2 }),
+    body: JSON.stringify({ content_id_1: content_id_1, content_id_2: content_id_2, type:type }),
   });
   return data;
 }
@@ -363,7 +369,7 @@ export async function compareMovies(
 export async function compareTvs(
   tvId1: number,
   tvId2: number
-): Promise<{ tv1: string; tv2: string; comparison: TvComparison }> {
+): Promise<{ tv1: string; tv2: string; comparison: Comparison }> {
   const data = await apiFetch("/api/ai/compare/tv", {
     method: "POST",
     body: JSON.stringify({ tv_id_1: tvId1, tv_id_2: tvId2 }),

@@ -10,4 +10,4 @@ jobs:
     steps:
       - name: Send Heartbeat to Hugging Face
         run: |
-          curl -I https://demandapps-cinoppy-crawler.hf.space/health
+          curl -s https://demandapps-cinoppy-crawler.hf.space/health \

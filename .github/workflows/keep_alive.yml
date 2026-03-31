@@ -10,5 +10,4 @@ jobs:
     steps:
       - name: Send Heartbeat to Hugging Face
         run: |
-          curl -I https://demandapps-cinoppy-crawler.hf.space/health \
-          -H "Authorization: Bearer ${{ secrets.CRAWL4AI_TOKEN }}"
+          curl -I https://demandapps-cinoppy-crawler.hf.space/health

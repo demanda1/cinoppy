@@ -16,12 +16,40 @@ const GEMINI_MODELS = {
   geminiModel7: "https://generativelanguage.googleapis.com/v1beta/models/gemma-3-27b-it"
 };
 
+interface CrawlJobId{
+  task_id: string;
+}
+
+interface CrawlResponse {
+  status: string,
+  result: any,
+  error: any
+}
+
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
 
     try {
+
+      // --- CRAWL4AI scraping --- 
+
+      if (path === "/api/ai/scrape" && request.method === "POST") {
+        const body = await request.json() as { url: string };
+        return await crawl4AI(body.url);
+      }
+
+      if (path === "/api/ai/scrape" && request.method === "GET") {
+        const query = url.searchParams.get("taskId");
+        if (!query) {
+        return Response.json({ error: "Missing search query ?taskId=" }, { status: 400 });
+        }
+        return await checkCrawlStatus(query);
+      }
+
+
       // --- AI Search ---
       if (path === "/api/ai/search" && request.method === "POST") {
         const body = await request.json() as { query: string };
@@ -781,3 +809,83 @@ async function supabasePost(env: Env, endpoint: string, body: any): Promise<any>
   }
   return res.json();
 }
+
+
+async function crawl4AI(wikiUrl: string): Promise<Response> {
+  
+  const response = await fetch("https://demandapps-cinoppy-crawler.hf.space/crawl", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer cinoppy_secret_123" },
+    body: JSON.stringify({
+      urls: wikiUrl,
+      cache_mode: "bypass",
+      priority: 5,
+      crawler_params: {
+        headless: true,
+        browser_type: "chromium"
+      }
+    })
+  })
+
+  const job = (await response.json()) as CrawlJobId;
+  const taskId = job.task_id;
+
+  // 2. Start Polling until completed
+  return await pollCrawlStatus(taskId);
+
+};
+
+async function pollCrawlStatus(taskId: string) {
+  let attempts = 0;
+  const maxAttempts = 20; // Max 40 seconds (20 * 2s)
+
+  while (attempts < maxAttempts) {
+    const response = await fetch(`https://demandapps-cinoppy-crawler.hf.space/task/${taskId}`, {
+      headers: { "Authorization": "Bearer cinoppy_secret_123" }
+    });
+    
+    const data = (await response.json()) as CrawlResponse;
+
+    if (data.status === "completed") {
+      // SUCCESS: Return the clean markdown
+      return Response.json({
+        status: data.status,
+        markdown: data.result.markdown
+      });
+    }
+
+    if (data.status === "failed") {
+      return Response.json({
+        status: data.status,
+        markdown: "errorv1"
+      });
+    }
+
+    // Wait 2 seconds before checking again
+    console.log(`Still cooking lore... (Attempt ${attempts + 1})`);
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    attempts++;
+  }
+
+  return Response.json({
+    status: "failed",
+    markdown: "errorv2"
+  });
+}
+
+async function checkCrawlStatus(taskId: string): Promise<Response> {
+  const response = await fetch(`https://demandapps-cinoppy-crawler.hf.space/task/${taskId}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json", "Authorization": "Bearer cinoppy_secret_123" }
+  })
+  const data = ( await response.json() ) as CrawlResponse;
+
+  if (data.status === "completed") {
+    return Response.json({
+      crawlData :  data.result.markdown
+    });
+  }
+  return Response.json({
+    status: data.status
+  }); // Still processing...
+};

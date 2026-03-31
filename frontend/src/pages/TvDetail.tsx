@@ -5,7 +5,6 @@ import type { Review, TVShow, Provider, Trailer } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import StarRating from "@/components/StarRating";
 import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";

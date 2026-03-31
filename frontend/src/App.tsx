@@ -15,6 +15,12 @@ export default function App() {
   useEffect(() => {
     // Check if user already has a session (read-only, never creates accounts)
     getCurrentUser().then(setUser);
+    // In your main page (e.g., index.html or app.js)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered:', reg.scope))
+        .catch(err => console.log('SW registration failed:', err));
+    }
 
     // Listen for ONLY explicit sign-in/sign-out events
     const { data: { subscription } } = onAuthChange(setUser);

@@ -258,16 +258,16 @@ export default function TvDetail() {
           </div>
 
           {/* AI Action Button — only compare remains */}
-          <div className="flex gap-3">
+          {/* <div className="flex gap-3">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowCompare(true)}
-              className="border-cinoppy-pink/30 text-cinoppy-pink hover:bg-cinoppy-pink/10"
+              className="bg-cinoppy-purple hover:bg-cinoppy-purple/80 text-white"
             >
               Compare with another
             </Button>
-          </div>
+          </div> */}
         </div>
       </div>
 

@@ -4,6 +4,7 @@ export interface Env {
 	SUPABASE_SECRET_KEY: string;
 	TMDB_API_READ_TOKEN: string;
 	YOUTUBE_APIKEY: string;
+	YOUTUBE_APIKEY_CNIPPETS: string;
 	ENVIRONMENT: string;
   }
 
@@ -187,6 +188,18 @@ export interface Env {
 			}
 			return await fetchTrailerDetails(`/youtube/v3/search?`, query, env);
 		  }
+
+		  // ============================================
+		// YOUTUBE SHORTS
+		// ============================================
+
+		if (path === "/api/shorts/search" && method === "GET") {
+			const query = url.searchParams.get("q");
+			if (!query) {
+			  return Response.json({ error: "Missing search query ?q=" }, { status: 400 });
+			}
+			return await fetchShortsDetails(`/youtube/v3/search?`, query, env);
+		  }
   
   
 		// ============================================
@@ -261,6 +274,28 @@ export interface Env {
 		videoEmbeddable: "true",
 		maxResults:"1",
 		key:env.YOUTUBE_APIKEY
+  });
+	const res = await fetch(`${YOUTUBE_BASE}${endpoint}${params.toString()}`, {
+	  headers: {
+		"Accept": "application/json",
+		"Content-Type": "application/json",
+	  },
+	});
+	if (!res.ok) {
+	  throw new Error(`YOUTUBE API error: ${res.status} ${res.statusText}`);
+	}
+	return res.json();
+  }
+
+  async function youtubeShortsFetch(endpoint: string, title:string, env: Env): Promise<any> {
+	const params = new URLSearchParams({
+		part: "snippet",
+		q:title+" movie or series shorts",
+		type:"video",
+		videoEmbeddable: "true",
+		maxResults:"50",
+		key:env.YOUTUBE_APIKEY_CNIPPETS,
+		videoDuration: "short"
   });
 	const res = await fetch(`${YOUTUBE_BASE}${endpoint}${params.toString()}`, {
 	  headers: {
@@ -381,6 +416,11 @@ export interface Env {
 
   async function fetchTrailerDetails(youtubeEndpoint: string, title: string, env: Env): Promise<Response> {
 	const data = await youtubeFetch(youtubeEndpoint, title, env);
+	return Response.json({ results: formatTrailer(data) });
+  }
+
+  async function fetchShortsDetails(youtubeEndpoint: string, title: string, env: Env): Promise<Response> {
+	const data = await youtubeShortsFetch(youtubeEndpoint, title, env);
 	return Response.json({ results: formatTrailer(data) });
   }
 

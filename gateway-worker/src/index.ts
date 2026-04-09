@@ -44,6 +44,7 @@ export default {
         path.startsWith("/api/tv") ||
         path.startsWith("/api/providers") ||
 		path.startsWith("/api/trailer") ||
+		path.startsWith("/api/shorts") ||
         path === "/api/home"
       ) {
         // Data features → Data worker

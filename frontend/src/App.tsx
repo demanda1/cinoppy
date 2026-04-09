@@ -6,8 +6,9 @@ import SearchResults from "@/pages/SearchResults";
 import MovieDetail from "@/pages/MovieDetail";
 import TvDetail from "@/pages/TvDetail";
 import AskAI from "@/pages/AskAI";
-import { getCurrentUser, logOut, onAuthChange } from "@/lib/auth";
+import { getCurrentUser, onAuthChange } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
+import Cnippets from "./pages/Cnippets";
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -27,21 +28,18 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function handleLogout() {
-    await logOut();
-    setUser(null);
-  }
 
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-background text-foreground">
-        <Navbar user={user} onLogout={handleLogout} />
+        <Navbar user={user} />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/tv/:id" element={<TvDetail />} />
           <Route path="/ask-ai" element={<AskAI />} />
+          <Route path="/shorts" element={<Cnippets />} />
           {/* We'll add these in the next steps: */}
           {/* <Route path="/watchlist" element={<Watchlist />} /> */}
         </Routes>

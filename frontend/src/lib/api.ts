@@ -84,6 +84,11 @@ export interface Trailer {
   release_year: string;
 }
 
+export interface Shorts {
+  id: string;
+  title: string;
+}
+
 export interface Review {
   id: string;
   user_id: string;
@@ -248,6 +253,11 @@ export async function searchAI(query: string): Promise<AISearchResponse[]> {
 export async function searchTrailer(query: string): Promise<Trailer> {
   const data = await apiFetch(`/api/trailer/search?q=${encodeURIComponent(query)}`);
   return data.results[0];
+}
+
+export async function searchShorts(query: string): Promise<Shorts[]> {
+  const data = await apiFetch(`/api/shorts/search?q=${encodeURIComponent(query)}`);
+  return data.results;
 }
 
 export async function searchMulti(query: string): Promise<Multi[]> {

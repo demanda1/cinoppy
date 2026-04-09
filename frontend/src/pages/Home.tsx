@@ -147,7 +147,7 @@ export default function Home() {
       )}
 
       <div className="mt-14 pt-4 border-t border-border/30 text-xs text-muted-foreground/40 text-center">
-        This product uses the TMDB API but is not endorsed or certified by TMDB.
+
       </div>
     </div>
   );

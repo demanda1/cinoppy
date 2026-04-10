@@ -41,14 +41,6 @@ export default {
         return await crawl4AI(body.url);
       }
 
-      if (path === "/api/ai/scrape" && request.method === "GET") {
-        const query = url.searchParams.get("taskId");
-        if (!query) {
-        return Response.json({ error: "Missing search query ?taskId=" }, { status: 400 });
-        }
-        return await checkCrawlStatus(query);
-      }
-
 
       // --- AI Search ---
       if (path === "/api/ai/search" && request.method === "POST") {
@@ -873,19 +865,3 @@ async function pollCrawlStatus(taskId: string) {
   });
 }
 
-async function checkCrawlStatus(taskId: string): Promise<Response> {
-  const response = await fetch(`https://demandapps-cinoppy-crawler.hf.space/task/${taskId}`, {
-    method: "GET",
-    headers: { "Content-Type": "application/json", "Authorization": "Bearer cinoppy_secret_123" }
-  })
-  const data = ( await response.json() ) as CrawlResponse;
-
-  if (data.status === "completed") {
-    return Response.json({
-      crawlData :  data.result.markdown
-    });
-  }
-  return Response.json({
-    status: data.status
-  }); // Still processing...
-};

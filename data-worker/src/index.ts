@@ -178,6 +178,20 @@ export interface Env {
 		}
 
 		// ============================================
+		// FILTER SEARCH
+		// ============================================
+		if (path === "/api/filter/search" && request.method === "POST") {
+			const body = await request.json() as { language: string, type: string, genre: string, rating: string };
+			const basicfilter="include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc"
+			const genreFilter=body.genre.length>0?`&with_genres=${body.genre}`:''
+			const languageFilter=body.language.length>0?`&with_original_language=${body.language}`:''
+			const rating=body.rating.length>0? 
+			(parseInt(body.rating)>=5)?`&vote_average.gte=${body.rating}`:`&vote_average.lte=${body.rating}` : '';
+			const filterEndpoint = `/discover/${body.type}?${basicfilter}${genreFilter}${rating}${languageFilter}`;
+			return await fetchFilteredList(filterEndpoint, env);
+		  }
+
+		// ============================================
 		// YOUTUBE TRAILER
 		// ============================================
 
@@ -390,6 +404,12 @@ export interface Env {
 	}));
   }
 
+  function formatFilterData(data: any): any[] {
+	return data.results.map((s: any) => ({
+	  id: s.id,
+	}));
+  }
+
   function formatProviders(data: any): any[] {
 	// 1. Get the India (IN) results object
 	const indiaResults = data?.results?.IN;
@@ -442,6 +462,11 @@ export interface Env {
   async function fetchProviders(tmdbEndpoint: string, env: Env): Promise<Response> {
 	const data = await tmdbFetch(tmdbEndpoint, env);
 	return Response.json({ results: formatProviders(data)});
+  }
+
+  async function fetchFilteredList(tmdbEndpoint: string, env: Env): Promise<Response> {
+	const data = await tmdbFetch(tmdbEndpoint, env);
+	return Response.json({ results: formatFilterData(data)});
   }
   
   

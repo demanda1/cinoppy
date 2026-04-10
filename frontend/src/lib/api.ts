@@ -2,6 +2,10 @@ const GATEWAY_URL = import.meta.env.VITE_GATEWAY_URL || "http://localhost:8787";
 
 // --- Types ---
 
+export interface FilterIds {
+  id: string;
+}
+
 export interface Multi {
   id: number;
   title: string;
@@ -397,6 +401,16 @@ export async function compareTvs(
     body: JSON.stringify({ tv_id_1: tvId1, tv_id_2: tvId2 }),
   });
   return data;
+}
+
+// -- Filter API ---
+
+export async function filterContentSearch(language: string, type: string, genre: string, rating: string ): Promise<FilterIds[]> {
+  const data = await apiFetch("/api/filter/search", {
+    method: "POST",
+    body: JSON.stringify({ language: language, type: type, genre: genre,  rating: rating }),
+  });
+  return data.results;
 }
 
 // --- Review APIs ---

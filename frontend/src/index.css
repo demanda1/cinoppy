@@ -88,52 +88,17 @@ body {
 
 /* The Main Gradient - Optimized for speed and vibrancy */
 .cnippets-link {
-  font-style: italic;
-  font-weight: 800; /* Extra bold for that punchy "Shorts" look */
-  letter-spacing: -0.05em; /* Tighter letters feel faster */
-  text-transform: uppercase;
-  display: inline-block;
-  
-  /* The Gradient */
   background: linear-gradient(
     90deg, 
     #ff0050, /* TikTok Red */
     #a855f7, /* Purple */
     #00f2ea  /* Cyan */
   );
-  background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  
-  /* Add a subtle skew to make it look like it's moving */
-  transform: skewX(-5deg);
-  transition: all 0.3s ease;
-}
-
-/* Hover Effect: Shimmer and Pulse */
-.cnippets-link:hover {
-  background-position: right center;
-  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.6));
-  transform: skewX(-5deg) scale(1.05);
-  cursor: pointer;
-}
-
-/* Optional: A "Blink" animation like a notification */
-.cnippets-pulse {
-  position: relative;
-}
-
-.cnippets-pulse::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: -8px;
-  width: 6px;
-  height: 6px;
-  background-color: #ff0050;
-  border-radius: 50%;
-  box-shadow: 0 0 10px #ff0050;
+  font-style: italic;
+  -webkit-text-fill-color: transparent;
 }
 
 /* Add to your global CSS */

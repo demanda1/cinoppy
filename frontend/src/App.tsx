@@ -9,6 +9,7 @@ import AskAI from "@/pages/AskAI";
 import { getCurrentUser, onAuthChange } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import Cnippets from "./pages/Cnippets";
+import FilterResults from "./pages/FilterResults";
 
 export default function App() {
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -36,6 +37,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/search" element={<SearchResults />} />
+          <Route path="/filter" element={<FilterResults />} />
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/tv/:id" element={<TvDetail />} />
           <Route path="/ask-ai" element={<AskAI />} />

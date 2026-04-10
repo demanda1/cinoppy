@@ -3,6 +3,19 @@ import { getHomePage } from "@/lib/api";
 import type { HomePageData, Movie, TVShow } from "@/lib/api";
 import MovieCard from "@/components/MovieCard";
 import TVCard from "@/components/TVCard";
+import Filters from "@/components/Filters";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Sparkles, ListFilterPlus, Search } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 interface ScrollRowProps {
   title: string;
@@ -51,6 +64,12 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [query, setQuery] = useState("");
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const navigate = useNavigate();
+
   useEffect(() => {
     async function fetchAll() {
       try {
@@ -67,6 +86,25 @@ export default function Home() {
     }
     fetchAll();
   }, []);
+
+  function handleAskAI() {
+    let trimmed = aiQuery.trim();
+    if (trimmed) {
+      setAiOpen(false);
+      trimmed = "Suggest something like: "+trimmed;
+      navigate(`/ask-ai?q=${encodeURIComponent(trimmed)}`);
+      setAiQuery("");
+    }
+  }
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = query.trim();
+    if (trimmed) {
+      navigate(`/search?q=${encodeURIComponent(trimmed)}`);
+      setQuery("");
+    }
+  }
 
   function renderMovieRow(title: string, color: string, movies: Movie[]) {
     if (!movies || movies.length === 0) return null;
@@ -93,23 +131,83 @@ export default function Home() {
       </ScrollRow>
     );
   }
+  
   return (
-    <div className="mx-auto max-w-6xl px-4 py-12">
-      {/* Hero */}
-      <div className="mb-14 text-center space-y-4">
-        {/* <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-gradient">
-          Cinoppy
-        </h1> */}
-        <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
-          Discover movies, tv series and more,
-          with AI recommendations and pitches that actually make you want to hit play.
-        </p>
-        <div className="flex justify-center gap-2 pt-2">
-          <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-purple/10 text-cinoppy-purple border border-cinoppy-purple/20">AI Pitches & recommendations</span>
-          <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-pink/10 text-cinoppy-pink border border-cinoppy-pink/20">No Spoilers</span>
-          <span className="px-3 py-1 rounded-full text-xs bg-cinoppy-blue/10 text-cinoppy-blue border border-cinoppy-blue/20">Community Reviews</span>
-        </div>
+    <div className="mx-auto max-w-6xl px-4 py-4">
+      <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-y-4 gap-x-4 md:py-0">
+        <form 
+        onSubmit={handleSearch} 
+        className="flex flex-1 w-full md:w-auto md:max-w-md gap-2 order-3 md:order-none">
+          <Input
+            type="text"
+            placeholder="Search movies or tv series..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-9 bg-secondary/50 border-border/50 placeholder:text-muted-foreground/50 focus-visible:ring-cinoppy-purple/50"
+          />
+           
+          <Button type="submit" size="lg" className="hover:text-foreground">
+          <Search className="size-3.5" />
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => setFilterOpen(true)}
+            className="bg-gradient-to-r from-cinoppy-purple to-cinoppy-pink hover:from-cinoppy-purple/80 hover:to-cinoppy-pink/80 text-white gap-1"
+          >
+            <ListFilterPlus className="size-3.5" />
+      </Button>
+          <Button
+            type="button"
+            size="lg"
+            onClick={() => setAiOpen(true)}
+            className="bg-gradient-to-r from-cinoppy-purple to-cinoppy-pink hover:from-cinoppy-purple/80 hover:to-cinoppy-pink/80 text-white gap-1"
+          >
+            <Sparkles className="size-3.5" />
+          </Button>
+          <div className="mb-14 text-center space-y-4">
       </div>
+        </form>
+      </div>
+      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
+        <DialogContent className="sm:max-w-md bg-card border-border/50">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-gradient">
+              <Sparkles className="size-5 text-cinoppy-purple" />
+              Ask Cinoppy AI
+            </DialogTitle>
+            <DialogDescription>
+              Ask anything about movies or TV shows and let Cinoppy AI find the answer.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="e.g. Suggest me a thriller movie like Inception..."
+            value={aiQuery}
+            onChange={(e) => setAiQuery(e.target.value)}
+            className="min-h-24 bg-secondary/50 border-border/50 placeholder:text-muted-foreground/50 focus-visible:ring-cinoppy-purple/50"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleAskAI();
+              }
+            }}
+          />
+          <Button
+            onClick={handleAskAI}
+            className="w-full bg-gradient-to-r from-cinoppy-purple to-cinoppy-pink hover:from-cinoppy-purple/80 hover:to-cinoppy-pink/80 text-white"
+          >
+            <Sparkles className="size-4 mr-1" />
+            Ask Cinoppy AI
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={filterOpen} onOpenChange={setFilterOpen}>
+        <DialogContent className="sm:max-w-md bg-card border-border/50">
+         <Filters/>
+        </DialogContent>
+      </Dialog>
+      {/* Hero */}
 
       {/* Loading */}
       {loading && (

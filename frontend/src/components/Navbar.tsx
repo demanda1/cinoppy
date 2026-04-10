@@ -121,7 +121,7 @@ export default function Navbar({ user }: NavbarProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-3xl">
       <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-y-4 gap-x-4 px-4 py-3 md:py-0">
         <Link to="/" className="shrink-0 text-2xl font-bold tracking-tight text-gradient">
           Cinoppy
@@ -129,10 +129,8 @@ export default function Navbar({ user }: NavbarProps) {
         <Link to="/shorts" className="shrink-0 text-2xl font-bold tracking-tight cnippets-link">
           Cnippets
         </Link>
-        <Link to="/">
-            <Button variant="ghost" size="lg" className="text-muted-foreground hover:text-foreground">
-              Home
-            </Button>
+        <Link to="/"className="text-muted-foreground hover:text-foreground">
+          Home
           </Link>
 
         <form 

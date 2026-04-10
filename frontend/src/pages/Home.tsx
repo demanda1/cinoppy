@@ -97,9 +97,9 @@ export default function Home() {
     <div className="mx-auto max-w-6xl px-4 py-12">
       {/* Hero */}
       <div className="mb-14 text-center space-y-4">
-        <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-gradient">
+        {/* <h1 className="text-5xl sm:text-6xl font-bold tracking-tight text-gradient">
           Cinoppy
-        </h1>
+        </h1> */}
         <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
           Discover movies, tv series and more,
           with AI recommendations and pitches that actually make you want to hit play.

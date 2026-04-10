@@ -55,7 +55,7 @@ export default function Navbar({ user }: NavbarProps) {
   if (isCnippetsPage) {
     // RETURN THE SHORTS NAVBAR
     return (
-      <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/10 backdrop-blur-3xl">
+      <nav className="sticky top-0 z-50 bg-background/10 backdrop-blur-3xl">
       {/* 1. The Container (Keeps your links together) */}
       <div className="relative flex w-full max-w-md h-14 p-1 bg-white/5 border border-white/10 rounded-full">
         
@@ -111,7 +111,7 @@ export default function Navbar({ user }: NavbarProps) {
   }
 
   return (
-    <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-3xl">
+    <nav className="sticky top-0 z-50  bg-background/80 backdrop-blur-3xl">
       {/* 1. The Container (Keeps your links together) */}
       <div className="relative flex w-full max-w-md h-14 p-1 bg-white/5 border border-white/10 rounded-full">
         

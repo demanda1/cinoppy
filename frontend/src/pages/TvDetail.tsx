@@ -10,6 +10,7 @@ import ReviewForm from "@/components/ReviewForm";
 import CompareModal from "@/components/CompareModal";
 import TVCard from "@/components/TVCard";
 import YoutubePlayer from "@/components/YoutubePlayer";
+import {Share2 } from "lucide-react";
 
 export default function TvDetail() {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +29,8 @@ export default function TvDetail() {
   const [error, setError] = useState<string | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [trailer, setTrailer] = useState<Trailer | null>(null);
+  const [copied, setCopied] = useState(false);
+  
 
   function parseJsonField(field: string | string[] | undefined): string[] {
     if (!field) return [];
@@ -175,6 +178,53 @@ export default function TvDetail() {
   const genres = parseJsonField(tv.genres);
   const actors = parseJsonField(tv.lead_actors);
 
+
+  const handleShare = async () => {
+    setCopied(false);
+      const shareData = {
+        title: tv.title,
+        text: `hey check this out im watching this series: ${tv.title}`,
+        url: window.location.href, // Captures current movie page URL
+        poster: tv.poster_url
+      };
+  
+      // 1. Try to open Native Share Modal (Mobile/Supported Browsers)
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData);
+          console.log('Successfully shared');
+        } catch (error) {
+          // Log error only if it's not a user cancellation
+          console.error('Error sharing:', error);
+        }
+      } 
+      // 2. Fallback: Copy to Clipboard (Desktop/Unsupported)
+      else {
+        try {
+          const fullMessage = `${shareData.text} ${shareData.url}`;
+          await navigator.clipboard.writeText(fullMessage).then(()=>{
+            const toast = document.getElementById("copy-toast");
+            if (toast) {
+              toast.innerText = "Copied! ✅";
+              toast.style.display = "block";
+              
+              setTimeout(() => {
+                toast.style.display = "none";
+              }, 2000);
+            } else {
+              console.error("Could not find the element with ID 'copy-toast'");
+            }
+          });
+          console.log('Successfully copied link');
+          
+        } catch (error) {
+          console.error('Failed to copy link:', error);
+        }
+      }
+      setCopied(true);
+  };
+
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* Movie header */}
@@ -191,7 +241,10 @@ export default function TvDetail() {
 
         <div className="flex-1 space-y-5">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{tv.title}</h1>
+            <h1 className="text-3xl font-bold text-foreground">{tv.title}
+            <button className="relative z-10 p-2 hover:bg-muted rounded-full transition-colors" onClick={handleShare} > 
+            {copied ? <Share2 className="h-7 w-7 text-muted-foreground mr-3 shrink-0" /> : <Share2 className="h-7 w-7 text-purple-500 mr-3 shrink-0" />} </button>
+            </h1>
             <p className="text-muted-foreground mt-1">
               {tv.release_year}
               {tv.director && (

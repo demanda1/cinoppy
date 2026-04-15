@@ -183,7 +183,7 @@ export default function TvDetail() {
     setCopied(false);
       const shareData = {
         title: tv.title,
-        text: `hey check this out im watching this series: ${tv.title}`,
+        text: `Hey I'm watching this series: ${tv.title}. Check details on Cinoppy.`,
         url: window.location.href, // Captures current movie page URL
         poster: tv.poster_url
       };
@@ -196,12 +196,14 @@ export default function TvDetail() {
       // 1. Try to open Native Share Modal (Mobile/Supported Browsers)
       if (navigator.share) {
         try {
-            const blob = await fetchTvPoster(tv.id.toString());
-            const file = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-              await navigator.share({...shareData, files: [file]});
+            await navigator.share(shareData);
               console.log('Successfully shared');
-            }
+            // const blob = await fetchTvPoster(tv.id.toString());
+            // const file = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
+            // if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            //   await navigator.share({...shareData, files: [file]});
+            //   console.log('Successfully shared');
+            // }
         } catch (error) {
           // Log error only if it's not a user cancellation
           console.error('Error sharing:', error);

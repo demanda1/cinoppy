@@ -182,7 +182,7 @@ export default function MovieDetail() {
     setCopied(false);
       const shareData = {
         title: movie.title,
-        text: `hey check this out im watching this movie: ${movie.title}`,
+        text: `Hey I'm watching this movie: ${movie.title}. Check details on Cinoppy.`,
         url: window.location.href, // Captures current movie page URL
         poster: movie.poster_url
       };
@@ -197,10 +197,12 @@ export default function MovieDetail() {
       // 1. Try to open Native Share Modal (Mobile/Supported Browsers)
       if (navigator.share) {
         try {
-          const blob = await fetchMoviePoster(movie.id.toString());
-          const file = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
-          await navigator.share({...shareData, files: [file]});
-            console.log('Successfully shared');
+          await navigator.share(shareData);
+              console.log('Successfully shared');
+          // const blob = await fetchMoviePoster(movie.id.toString());
+          // const file = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
+          // await navigator.share({...shareData, files: [file]});
+          //   console.log('Successfully shared');
           
         } catch (error) {
           // Log error only if it's not a user cancellation

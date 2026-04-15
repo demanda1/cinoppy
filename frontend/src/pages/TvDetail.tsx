@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders, searchTrailer } from "@/lib/api";
+import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders, searchTrailer, fetchTvPoster } from "@/lib/api";
 import type { Review, TVShow, Provider, Trailer } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
@@ -196,8 +196,7 @@ export default function TvDetail() {
       // 1. Try to open Native Share Modal (Mobile/Supported Browsers)
       if (navigator.share) {
         try {
-            const response = await fetch(tv.poster_url);
-            const blob = await response.blob();
+            const blob = await fetchTvPoster(tv.id.toString());
             const file = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
               await navigator.share({...shareData, files: [file]});

@@ -82,6 +82,23 @@ export interface Env {
 		// ============================================
 		// MOVIE LIST ENDPOINTS
 		// ============================================
+
+		if (path === "/api/movies/poster" && method === "GET") {
+			const query = url.searchParams.get("q");
+			if (!query) {
+			  return Response.json({ error: "Missing search query ?q=" }, { status: 400 });
+			}
+			return await fetchPoster(`/movie/${encodeURIComponent(query)}/images`, env);
+		}
+
+		if (path === "/api/tv/poster" && method === "GET") {
+			const query = url.searchParams.get("q");
+			if (!query) {
+			  return Response.json({ error: "Missing search query ?q=" }, { status: 400 });
+			}
+			return await fetchPoster(`/tv/${encodeURIComponent(query)}/images`, env);
+		}
+		  
   
 		if (path === "/api/movies/search" && method === "GET") {
 		  const query = url.searchParams.get("q");
@@ -447,6 +464,26 @@ export interface Env {
   async function fetchMultiList(tmdbEndpoint: string, env: Env): Promise<Response> {
 	const data = await tmdbFetch(tmdbEndpoint, env);
 	return Response.json({ results: formatMulti(data) });
+  }
+
+  async function fetchPoster(tmdbEndpoint: string, env: Env): Promise<Response> {
+	const data = await tmdbFetch(tmdbEndpoint, env);
+	const poster_path= data.backdrops[0].file_path;
+	const imageUrl = `https://image.tmdb.org/t/p/w500${poster_path}`;
+	const imageResponse = await fetch(imageUrl);
+
+    if (!imageResponse.ok) {
+        return new Response("Failed to fetch image from TMDB", { status: 500 });
+    }
+
+    // 4. Get the blob from the IMAGE response
+    const imageBlob = await imageResponse.blob();
+	return new Response(imageBlob, {
+        headers: {
+            "Content-Type": "image/jpeg",
+            "Access-Control-Allow-Origin": "*", // Solves your CORS issue!
+        },
+    });
   }
   
   async function fetchMovieList(tmdbEndpoint: string, env: Env): Promise<Response> {

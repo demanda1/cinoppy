@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies, searchMovies, getMovieProviders, searchTrailer } from "@/lib/api";
+import { getMovieDetails, getMoviePitchStream, getReviews, getSimilarMovies, searchMovies, getMovieProviders, searchTrailer, fetchMoviePoster } from "@/lib/api";
 import type { Movie, Review, Provider, Trailer } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
@@ -197,13 +197,10 @@ export default function MovieDetail() {
       // 1. Try to open Native Share Modal (Mobile/Supported Browsers)
       if (navigator.share) {
         try {
-          const response = await fetch(movie.poster_url);
-          const blob = await response.blob();
+          const blob = await fetchMoviePoster(movie.id.toString());
           const file = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({...shareData, files: [file]});
+          await navigator.share({...shareData, files: [file]});
             console.log('Successfully shared');
-          }
           
         } catch (error) {
           // Log error only if it's not a user cancellation
@@ -240,7 +237,7 @@ export default function MovieDetail() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       {/* Movie header */}
       <div className="flex flex-col md:flex-row gap-8">
-        <div className="w-64 shrink-0 mx-auto md:mx-0">
+        <div id="poster-id" className="w-64 shrink-0 mx-auto md:mx-0">
           {movie.poster_url ? (
             <img src={movie.poster_url} alt={movie.title} className="w-full rounded-xl shadow-2xl shadow-cinoppy-purple/10" />
           ) : (

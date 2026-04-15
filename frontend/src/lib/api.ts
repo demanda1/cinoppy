@@ -156,6 +156,32 @@ async function apiFetch(endpoint: string, options: RequestInit = {}): Promise<an
   return res.json();
 }
 
+async function apiFetchPoster(endpoint: string, options: RequestInit = {}): Promise<any> {
+  const token = localStorage.getItem("cinoppy_token");
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string> || {}),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const res = await fetch(`${GATEWAY_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: "Request failed" }));
+    throw new Error(error.error || `API error: ${res.status}`);
+  }
+
+  return res;
+}
+
+
 export async function apiFetchStream(
   endpoint: string, 
   options: RequestInit = {}, 
@@ -252,6 +278,15 @@ export async function searchAI(query: string): Promise<AISearchResponse[]> {
     body: JSON.stringify({ query: query }),
   });
   return data.searched;
+}
+
+export async function fetchMoviePoster(query: string): Promise<Blob> {
+  const data = await apiFetchPoster(`/api/movies/poster?q=${encodeURIComponent(query)}`);
+  return data;
+}
+export async function fetchTvPoster(query: string): Promise<Blob> {
+  const data = await apiFetchPoster(`/api/tv/poster?q=${encodeURIComponent(query)}`);
+  return data;
 }
 
 export async function searchTrailer(query: string): Promise<Trailer> {

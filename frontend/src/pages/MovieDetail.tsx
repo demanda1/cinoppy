@@ -186,12 +186,25 @@ export default function MovieDetail() {
         url: window.location.href, // Captures current movie page URL
         poster: movie.poster_url
       };
+
+      // 1. Safety check: stop if the URL is missing
+  if (!movie.poster_url) {
+    console.error("No poster URL available to share");
+    return;
+  }
+
   
       // 1. Try to open Native Share Modal (Mobile/Supported Browsers)
       if (navigator.share) {
         try {
-          await navigator.share(shareData);
-          console.log('Successfully shared');
+          const response = await fetch(movie.poster_url);
+          const blob = await response.blob();
+          const file = new File([blob], 'poster.jpg', { type: 'image/jpeg' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({...shareData, files: [file]});
+            console.log('Successfully shared');
+          }
+          
         } catch (error) {
           // Log error only if it's not a user cancellation
           console.error('Error sharing:', error);

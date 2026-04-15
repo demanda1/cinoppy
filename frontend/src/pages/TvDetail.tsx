@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders, searchTrailer, fetchTvPoster } from "@/lib/api";
+import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders, searchTrailer } from "@/lib/api";
 import type { Review, TVShow, Provider, Trailer } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders, searchTrailer } from "@/lib/api";
-import type { Review, TVShow, Provider, Trailer } from "@/lib/api";
+import { getTvDetails, getTvPitchStream, getReviews, getSimilarTv, searchTvs, getTVProviders, searchTrailer, getTvTmdbReviews } from "@/lib/api";
+import type { Review, TVShow, Provider, Trailer, TMDBReviews } from "@/lib/api";
 import { getCurrentUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ export default function TvDetail() {
 
   const [tv, setTv] = useState<TVShow | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [tmdbReviews, setTmdbReviews] = useState<TMDBReviews[]>([]);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [tvLoading, setTvLoading] = useState(true);
   const [tvError, setTvError] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export default function TvDetail() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [trailer, setTrailer] = useState<Trailer | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   
 
   function parseJsonField(field: string | string[] | undefined): string[] {
@@ -68,6 +70,7 @@ export default function TvDetail() {
   useEffect(() => {
     if (!tvId) return;
     // Reset states when movie changes
+    window.scrollTo(0, 0);
     setSearchResults([]);
     setTrailer(null);
     const abortController = new AbortController();
@@ -80,7 +83,7 @@ export default function TvDetail() {
         getTVProviders(tvId)
           .then((p) => setProviders(p.slice(0, 6)))
           .catch(() => {});
-        const trailerData= await searchTrailer(data.title);
+        const trailerData= await searchTrailer(data.title + " " +data.release_year);
         setTrailer(trailerData);
       } catch (err) {
         setTvError(err instanceof Error ? err.message : "Failed to load movie");
@@ -141,12 +144,20 @@ export default function TvDetail() {
   useEffect(() => {
     if (!tvId) return;
     fetchReviews();
+    fetchTmdbReviews();
   }, [tvId]);
 
   async function fetchReviews() {
     try {
       const data = await getReviews(tvId);
       setReviews(data);
+    } catch {}
+  }
+
+  async function fetchTmdbReviews() {
+    try {
+      const data = await getTvTmdbReviews(tvId);
+      setTmdbReviews(data);
     } catch {}
   }
 
@@ -397,10 +408,30 @@ export default function TvDetail() {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="mt-14 pt-4 border-t border-border/30 text-xs text-muted-foreground/40">
-        This product uses the TMDB API but is not endorsed or certified by TMDB.
+        {tmdbReviews.length === 0 ? (
+          <p className="text-muted-foreground text-sm"></p>
+        ) : (
+          <div className="space-y-3">
+            {tmdbReviews.map((review) => (
+              <div className="rounded-xl bg-card border border-border/30 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm flex items-center gap-2 mb-2 font-medium text-cinoppy-cyan">{ review.avatar_path==null? <>🎭 </> :<img src={`https://image.tmdb.org/t/p/w500`+review.avatar_path} className="w-6 h-6 rounded-full border border-cinoppy-cyan/20 shadow-sm" /> }{review.author}</span>
+                  <StarRating value={review.rating/2} size="sm" />
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed"> {isExpanded ? review.content : `${review.content.substring(0, 50)}... `}</p>
+                {review.content.length > 0 && 
+                  (
+                    <button 
+                      onClick={() => setIsExpanded(!isExpanded)}
+                      className="text-xs text-cinoppy-cyan mt-1 hover:underline font-medium"
+                    >
+                      {isExpanded ? 'Show less' : '...read more'}
+                    </button>
+                  )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

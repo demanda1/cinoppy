@@ -103,6 +103,14 @@ export interface Review {
   profiles?: { display_name: string };
 }
 
+export interface TMDBReviews {
+	author: string;
+	avatar_path: string | null;
+	content: string;
+	rating: number;
+	url: string;
+  }
+
 export interface WatchlistItem {
   id: string;
   movie_id: number;
@@ -453,6 +461,16 @@ export async function filterContentSearch(language: string, type: string, genre:
 export async function getReviews(movieId: number): Promise<Review[]> {
   const data = await apiFetch(`/api/movies/${movieId}/reviews`);
   return data.reviews;
+}
+
+export async function getMovieTmdbReviews(movieId: number): Promise<TMDBReviews[]> {
+  const data = await apiFetch(`/api/movies/tmdb/reviews?q=${encodeURIComponent(movieId)}`);
+  return data.results;
+}
+
+export async function getTvTmdbReviews(tvId: number): Promise<TMDBReviews[]> {
+  const data = await apiFetch(`/api/tv/tmdb/reviews?q=${encodeURIComponent(tvId)}`);
+  return data.results;
 }
 
 export async function postReview(

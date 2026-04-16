@@ -44,6 +44,16 @@ export interface Env {
 	provider_name: string;
 	logo_path: string | null;
   }
+
+  interface TMDBReviews {
+	author: string;
+	content: string;
+	url: string;
+	author_details: {
+		avatar_path: string | null;
+		rating: number;
+	}
+  }
   
   const MOVIE_GENRE_MAP: Record<number, string> = {
 	28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy",
@@ -135,6 +145,14 @@ export interface Env {
 		if (path === "/api/movies/upcoming" && method === "GET") {
 		  return await fetchMovieList("/movie/upcoming?language=en-US&page=1", env);
 		}
+
+		if (path === "/api/movies/tmdb/reviews" && method === "GET") {
+			const query = url.searchParams.get("q");
+			if (!query) {
+			  return Response.json({ error: "Missing search query ?q=" }, { status: 400 });
+			}
+			return await getTmdbReviews(`/movie/${query}/reviews?language=en-US&page=1`, env);
+		}
   
 		// ============================================
 		// TV SHOW ENDPOINTS
@@ -154,6 +172,14 @@ export interface Env {
   
 		if (path === "/api/tv/top-rated" && method === "GET") {
 		  return await fetchTVList("/tv/top_rated?language=en-US&page=1", env);
+		}
+
+		if (path === "/api/tv/tmdb/reviews" && method === "GET") {
+			const query = url.searchParams.get("q");
+			if (!query) {
+			  return Response.json({ error: "Missing search query ?q=" }, { status: 400 });
+			}
+			return await getTmdbReviews(`/tv/${query}/reviews?language=en-US&page=1`, env);
 		}
   
 		// ============================================
@@ -374,6 +400,20 @@ export interface Env {
 				release_year: date}
 
 		})
+	}
+  }
+
+  function formatReviews(data: any): any[] {
+	if (data.results.length==0){
+		return [];
+	} else {
+		return data.results.slice(0, 20).map((reviews:TMDBReviews) => ({
+			author: reviews.author,
+				avatar_path: reviews.author_details.avatar_path,
+				content: reviews.content,
+				rating: reviews.author_details.rating,
+				url: reviews.url || null,
+		  }));
 	}
   }
 
@@ -612,6 +652,11 @@ export interface Env {
   // ============================================
   // REVIEWS
   // ============================================
+
+  async function getTmdbReviews(endpoint: string, env: Env): Promise<Response> {
+	const reviews = await tmdbFetch(endpoint, env);
+	return Response.json({ results: formatReviews(reviews)});
+  }
   
   async function getReviews(movieId: number, env: Env): Promise<Response> {
 	const reviews = await supabaseQuery(

@@ -41,7 +41,7 @@ export default function App() {
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/tv/:id" element={<TvDetail />} />
           <Route path="/ask-ai" element={<AskAI />} />
-          <Route path="/shorts" element={<Cnippets />} />
+          <Route path="/shorts/:selectedshort?" element={<Cnippets />} />
           {/* We'll add these in the next steps: */}
           {/* <Route path="/watchlist" element={<Watchlist />} /> */}
         </Routes>

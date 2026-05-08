@@ -499,3 +499,4 @@ export async function addToWatchlist(movieId: number): Promise<void> {
 export async function removeFromWatchlist(movieId: number): Promise<void> {
   await apiFetch(`/api/watchlist/${movieId}`, { method: "DELETE" });
 }
+

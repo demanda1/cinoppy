@@ -136,10 +136,10 @@ async function searchContent(query: string, env: Env): Promise<Response> {
   let responseText: string | null = null;
   
   try {
-    responseText = await callGemini(prompt, env, "geminiModel4");
+    responseText = await callGemini(prompt, env, "geminiModel1");
   } catch {
     try {
-      responseText = await callGemini(prompt, env, "geminiModel1");
+      responseText = await callGemini(prompt, env, "geminiModel4");
     } catch {
       try {
         responseText = await callGemini(prompt, env, "geminiModel5");
@@ -229,7 +229,7 @@ async function generateStreamingPitch(movieId: number, env: Env, type: "movie" |
     async start(controller) {
       try {
         // Initialize the generator function
-        const generator = callGeminiStream(prompt, env, "geminiModel4");
+        const generator = callGeminiStream(prompt, env, "geminiModel1");
 
         // Loop through the yielded chunks as they arrive
         for await (const chunk of generator) {
@@ -298,7 +298,7 @@ async function generatePitch(movieId: number, env: Env, type:String): Promise<Re
   let modelUsed = "gemini";
 
   try {
-    pitchText = await callGemini(prompt, env, "geminiModel4");
+    pitchText = await callGemini(prompt, env, "geminiModel1");
   } catch {
     try {
       pitchText = await callHuggingFace(prompt, env);
@@ -539,7 +539,7 @@ Now compare "${content1.title}" vs "${content2.title}":`;
   let responseText: string | null = null;
 
   try {
-    responseText = await callGemini(prompt, env, "geminiModel4");
+    responseText = await callGemini(prompt, env, "geminiModel1");
   } catch {
     try {
       responseText = await callHuggingFace(prompt, env);
@@ -584,7 +584,7 @@ Now compare "${content1.title}" vs "${content2.title}":`;
 // GEMINI API
 // ============================================
 
-async function callGemini(prompt: string, env: Env, model: keyof typeof GEMINI_MODELS = "geminiModel4"): Promise<string> {
+async function callGemini(prompt: string, env: Env, model: keyof typeof GEMINI_MODELS = "geminiModel1"): Promise<string> {
   const url = GEMINI_MODELS[model];
 
   const res = await fetch(`${url}:generateContent?key=${env.GEMINI_API_KEY}`, {

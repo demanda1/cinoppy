@@ -65,7 +65,7 @@ export default function FilterResults() {
             <> {/* The Spinner Logic */}
             {loading && (
                 <div className="absolute inset-0 flex items-start justify-center py-50 bg-black z-20">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
                 </div>
               )} Results for <span className="text-cinoppy-purple">{type}s</span></>
           ) : (

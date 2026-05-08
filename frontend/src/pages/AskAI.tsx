@@ -5,56 +5,64 @@ import type { Movie, Multi, TVShow } from "@/lib/api";
 import MovieCard from "@/components/MovieCard";
 import TVCard from "@/components/TVCard";
 
+// Extend the Multi type locally to include our unique key
+type MultiWithKey = Multi & { uniqueKey: string };
+
 export default function AskAI() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
 
-  const [_resultMovie, setResultMovie] = useState<Movie[]>([]);
-  const [_resultTv, setResultTv] = useState<TVShow[]>([]);
-  const [results, setResultMulti] = useState<Multi[]>([]);
+  const [results, setResultMulti] = useState<MultiWithKey[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!query) {
-        // Clear everything if query is gone
-        setResultMulti([]);
-        setResultMovie([]);
-        setResultTv([]);
-        return;
-      }
+      setResultMulti([]);
+      return;
+    }
+
     async function doSearch() {
       try {
         setLoading(true);
         setError(null);
         setResultMulti([]);
-        setResultMovie([]);
-        setResultTv([]);
-        // 1. Get AI intent
-        const content = await searchAI(query);
-        const firstMatch = content[0];
-        const searchTitle = firstMatch.title;
 
-        let finalResults: Multi[] = [];
+        // 1. Get AI intents (e.g., the 5 movie objects)
+        const aiContent = await searchAI(query);
 
-        // 2. Fetch specific data and Multi data
-      if (firstMatch.type === "tv") {
-        const tvshow = await searchTvs(searchTitle);
-        setResultTv(tvshow); // Update state for UI
-        // Format for the "Multi" list immediately using the local 'tvshow' variable
-        finalResults = tvshow.map(tv => ({ ...tv, type: 'tv' as const }));
-      } else {
-        const movie = await searchMovies(searchTitle);
-        setResultMovie(movie); // Update state for UI
-        // Format for the "Multi" list immediately using the local 'movie' variable
-        finalResults = movie.map(m => ({ ...m, type: 'movie' as const }));
-      }
-      // 3. Get the general multi results
-      const multi = await searchMulti(searchTitle);
-      
-      // 4. COMBINE AND SET (Replace, don't append)
-      // This ensures the list is fresh every time
-      setResultMulti([...finalResults, ...multi]);
+        // 2. Map each AI suggestion to a promise that fetches its specific data
+        const allRequests = aiContent.map(async (item) => {
+          try {
+            const searchTitle = item.title;
+            let specificData: Multi[] = [];
+
+            if (item.type === "tv") {
+              const tvshow = await searchTvs(searchTitle);
+              specificData = tvshow.map(tv => ({ ...tv, type: 'tv' as const }));
+            } else {
+              const movie = await searchMovies(searchTitle);
+              specificData = movie.map(m => ({ ...m, type: 'movie' as const }));
+            }
+
+            const multi = await searchMulti(searchTitle);
+            
+            // 3. Combine and inject uniqueKey to prevent React "duplicate key" errors
+            return [...specificData, ...multi].map(res => ({
+              ...res,
+              uniqueKey: `${searchTitle.replace(/\s+/g, '')}-${res.id}`
+            }));
+          } catch (err) {
+            console.error(`Failed to fetch details for ${item.title}`, err);
+            return [];
+          }
+        });
+
+        // 4. Run all searches in parallel
+        const resultsArray = await Promise.all(allRequests);
+        
+        // 5. Flatten results and update state once
+        setResultMulti(resultsArray.flat() as MultiWithKey[]);
         
       } catch (err) {
         setError(err instanceof Error ? err.message : "Search failed");
@@ -98,17 +106,17 @@ export default function AskAI() {
 
       {!loading && !error && results.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {/* 1. Render all TV Shows first */}
+          {/* Render TV Shows using uniqueKey */}
           {results
             .filter((item) => item.type === "tv")
             .map((show) => (
-            <TVCard key={show.id} show={show as TVShow} />
+              <TVCard key={show.uniqueKey} show={show as TVShow} />
             ))}
-            {/* 2. Render all Movies second */}
-            {results
+          {/* Render Movies using uniqueKey */}
+          {results
             .filter((item) => item.type === "movie")
             .map((movie) => (
-              <MovieCard key={movie.id} movie={movie as Movie} />
+              <MovieCard key={movie.uniqueKey} movie={movie as Movie} />
             ))}
         </div>
       )}
